@@ -1,6 +1,6 @@
 ﻿/**********************************************************************
 
-  文件名: 1.3_TestVTKInstall.cpp
+  文件名: 2.1_RenderCylinder.cpp
   Copyright (c) 张晓东, 罗火灵. All rights reserved.
   更多信息请访问: 
     http://www.vtkchina.org (VTK中国)

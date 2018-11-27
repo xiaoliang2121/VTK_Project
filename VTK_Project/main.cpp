@@ -17,6 +17,8 @@
 #include <vtkPolyDataMapper.h>
 #include <vtkActor.h>
 #include <vtkProperty.h>
+#include <vtkLight.h>
+#include <vtkCamera.h>
 
 int main()
 {
@@ -33,7 +35,6 @@ int main()
     vtkSmartPointer<vtkActor> cylinderActor =
         vtkSmartPointer<vtkActor>::New();
     cylinderActor->SetMapper( cylinderMapper );
-    cylinderActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
 
     vtkSmartPointer<vtkRenderer> renderer =
         vtkSmartPointer<vtkRenderer>::New();
@@ -45,7 +46,7 @@ int main()
     renWin->AddRenderer( renderer );
     renWin->SetSize( 640, 480 );
     renWin->Render();
-    renWin->SetWindowName("RenderCylinder");
+    renWin->SetWindowName("RenderCylinder-Lights");
 
     vtkSmartPointer<vtkRenderWindowInteractor> iren =
         vtkSmartPointer<vtkRenderWindowInteractor>::New();
@@ -54,6 +55,20 @@ int main()
     vtkSmartPointer<vtkInteractorStyleTrackballCamera> style =
         vtkSmartPointer<vtkInteractorStyleTrackballCamera>::New();
     iren->SetInteractorStyle(style);
+
+    vtkSmartPointer<vtkLight> myLight =
+            vtkSmartPointer<vtkLight>::New();
+    myLight->SetColor(0.0,1.0,0.0);
+    myLight->SetPosition(0.0,0.0,1.0);
+    myLight->SetFocalPoint(renderer->GetActiveCamera()->GetFocalPoint());
+    renderer->AddLight(myLight);
+
+    vtkSmartPointer<vtkLight> myLight2 =
+            vtkSmartPointer<vtkLight>::New();
+    myLight2->SetColor(0.0,0.0,1.0);
+    myLight2->SetPosition(0.0,0.0,-1.0);
+    myLight2->SetFocalPoint(renderer->GetActiveCamera()->GetFocalPoint());
+    renderer->AddLight(myLight2);
 
     iren->Initialize();
     iren->Start();

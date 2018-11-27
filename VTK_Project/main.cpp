@@ -13,32 +13,44 @@
 #include <vtkRenderer.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkInteractorStyleTrackballCamera.h>
-#include <vtkCylinderSource.h>
 #include <vtkPolyDataMapper.h>
+#include <vtkPlaneSource.h>
 #include <vtkActor.h>
 #include <vtkProperty.h>
-#include <vtkLight.h>
-#include <vtkCamera.h>
+#include <vtkJPEGReader.h>
+#include <vtkTexture.h>
 
-int main()
+int main(int argc, char* argv[])
 {
-    vtkSmartPointer<vtkCylinderSource> cylinder =
-        vtkSmartPointer<vtkCylinderSource>::New();
-    cylinder->SetHeight( 3.0 );
-    cylinder->SetRadius( 1.0 );
-    cylinder->SetResolution( 10 );
+    if(argc < 2)
+    {
+        std::cout<<argv[0]<<" "<<"TextureFile(*.jpg)"<<std::endl;
+        return EXIT_FAILURE;
+    }
 
-    vtkSmartPointer<vtkPolyDataMapper> cylinderMapper =
-        vtkSmartPointer<vtkPolyDataMapper>::New();
-    cylinderMapper->SetInputConnection( cylinder->GetOutputPort() );
+    vtkSmartPointer<vtkJPEGReader> reader =
+            vtkSmartPointer<vtkJPEGReader>::New();
+    reader->SetFileName(argv[1]);
 
-    vtkSmartPointer<vtkActor> cylinderActor =
-        vtkSmartPointer<vtkActor>::New();
-    cylinderActor->SetMapper( cylinderMapper );
+    vtkSmartPointer<vtkTexture> texture =
+            vtkSmartPointer<vtkTexture>::New();
+    texture->SetInputConnection(reader->GetOutputPort());
+    texture->InterpolateOn();
+
+    vtkSmartPointer<vtkPlaneSource> plane =
+            vtkSmartPointer<vtkPlaneSource>::New();
+    vtkSmartPointer<vtkPolyDataMapper> mapper =
+            vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(plane->GetOutputPort());
+
+    vtkSmartPointer<vtkActor> actor =
+            vtkSmartPointer<vtkActor>::New();
+    actor->SetMapper(mapper);
+    actor->SetTexture(texture);
 
     vtkSmartPointer<vtkRenderer> renderer =
         vtkSmartPointer<vtkRenderer>::New();
-    renderer->AddActor( cylinderActor );
+    renderer->AddActor( actor );
     renderer->SetBackground( 1.0, 1.0, 1.0 );
 
     vtkSmartPointer<vtkRenderWindow> renWin =
@@ -46,29 +58,11 @@ int main()
     renWin->AddRenderer( renderer );
     renWin->SetSize( 640, 480 );
     renWin->Render();
-    renWin->SetWindowName("RenderCylinder-Lights");
+    renWin->SetWindowName("TextureExample");
 
     vtkSmartPointer<vtkRenderWindowInteractor> iren =
         vtkSmartPointer<vtkRenderWindowInteractor>::New();
     iren->SetRenderWindow(renWin);
-
-    vtkSmartPointer<vtkInteractorStyleTrackballCamera> style =
-        vtkSmartPointer<vtkInteractorStyleTrackballCamera>::New();
-    iren->SetInteractorStyle(style);
-
-    vtkSmartPointer<vtkLight> myLight =
-            vtkSmartPointer<vtkLight>::New();
-    myLight->SetColor(0.0,1.0,0.0);
-    myLight->SetPosition(0.0,0.0,1.0);
-    myLight->SetFocalPoint(renderer->GetActiveCamera()->GetFocalPoint());
-    renderer->AddLight(myLight);
-
-    vtkSmartPointer<vtkLight> myLight2 =
-            vtkSmartPointer<vtkLight>::New();
-    myLight2->SetColor(0.0,0.0,1.0);
-    myLight2->SetPosition(0.0,0.0,-1.0);
-    myLight2->SetFocalPoint(renderer->GetActiveCamera()->GetFocalPoint());
-    renderer->AddLight(myLight2);
 
     iren->Initialize();
     iren->Start();

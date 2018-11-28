@@ -1,6 +1,6 @@
 ﻿/**********************************************************************
 
-  文件名: 2.1_RenderCylinder.cpp
+  文件名: Viewport.cpp
   Copyright (c) 张晓东, 罗火灵. All rights reserved.
   更多信息请访问: 
     http://www.vtkchina.org (VTK中国)
@@ -9,63 +9,88 @@
 **********************************************************************/
 
 #include <vtkSmartPointer.h>
-#include <vtkRenderWindow.h>
 #include <vtkRenderer.h>
-#include <vtkRenderWindowInteractor.h>
-#include <vtkInteractorStyleTrackballCamera.h>
-#include <vtkPolyDataMapper.h>
-#include <vtkPlaneSource.h>
+#include <vtkRenderWindow.h>
 #include <vtkActor.h>
-#include <vtkProperty.h>
-#include <vtkJPEGReader.h>
-#include <vtkTexture.h>
+#include <vtkRenderWindowInteractor.h>
+
+#include <vtkPolyDataMapper.h>
+
+#include <vtkConeSource.h>
+#include <vtkCubeSource.h>
+#include <vtkSphereSource.h>
+#include <vtkCylinderSource.h>
 
 int main(int argc, char* argv[])
 {
-    if(argc < 2)
-    {
-        std::cout<<argv[0]<<" "<<"TextureFile(*.jpg)"<<std::endl;
-        return EXIT_FAILURE;
-    }
+    vtkSmartPointer<vtkConeSource> cone = vtkSmartPointer<vtkConeSource>::New();
+    vtkSmartPointer<vtkCubeSource> cube = vtkSmartPointer<vtkCubeSource>::New();
+    vtkSmartPointer<vtkSphereSource> sphere = vtkSmartPointer<vtkSphereSource>::New();
+    vtkSmartPointer<vtkCylinderSource> cylinder = vtkSmartPointer<vtkCylinderSource>::New();
 
-    vtkSmartPointer<vtkJPEGReader> reader =
-            vtkSmartPointer<vtkJPEGReader>::New();
-    reader->SetFileName(argv[1]);
-
-    vtkSmartPointer<vtkTexture> texture =
-            vtkSmartPointer<vtkTexture>::New();
-    texture->SetInputConnection(reader->GetOutputPort());
-    texture->InterpolateOn();
-
-    vtkSmartPointer<vtkPlaneSource> plane =
-            vtkSmartPointer<vtkPlaneSource>::New();
-    vtkSmartPointer<vtkPolyDataMapper> mapper =
+    vtkSmartPointer<vtkPolyDataMapper> coneMapper =
             vtkSmartPointer<vtkPolyDataMapper>::New();
-    mapper->SetInputConnection(plane->GetOutputPort());
+    vtkSmartPointer<vtkPolyDataMapper> cubeMapper =
+            vtkSmartPointer<vtkPolyDataMapper>::New();
+    vtkSmartPointer<vtkPolyDataMapper> sphereMapper =
+            vtkSmartPointer<vtkPolyDataMapper>::New();
+    vtkSmartPointer<vtkPolyDataMapper> cylinderMapper =
+            vtkSmartPointer<vtkPolyDataMapper>::New();
+    coneMapper->SetInputConnection(cone->GetOutputPort());
+    cubeMapper->SetInputConnection(cube->GetOutputPort());
+    sphereMapper->SetInputConnection(sphere->GetOutputPort());
+    cylinderMapper->SetInputConnection(cylinder->GetOutputPort());
 
-    vtkSmartPointer<vtkActor> actor =
+    vtkSmartPointer<vtkActor> coneActor =
             vtkSmartPointer<vtkActor>::New();
-    actor->SetMapper(mapper);
-    actor->SetTexture(texture);
+    coneActor->SetMapper(coneMapper);
+    vtkSmartPointer<vtkActor> cubeActor =
+            vtkSmartPointer<vtkActor>::New();
+    cubeActor->SetMapper(cubeMapper);
+    vtkSmartPointer<vtkActor> sphereActor =
+            vtkSmartPointer<vtkActor>::New();
+    sphereActor->SetMapper(sphereMapper);
+    vtkSmartPointer<vtkActor> cylinderActor =
+            vtkSmartPointer<vtkActor>::New();
+    cylinderActor->SetMapper(cylinderMapper);
 
-    vtkSmartPointer<vtkRenderer> renderer =
-        vtkSmartPointer<vtkRenderer>::New();
-    renderer->AddActor( actor );
-    renderer->SetBackground( 1.0, 1.0, 1.0 );
+    vtkSmartPointer<vtkRenderer> renderer1 =
+            vtkSmartPointer<vtkRenderer>::New();
+    renderer1->AddActor(coneActor);
+    renderer1->SetBackground(1.0,0.0,0.0);
+    renderer1->SetViewport(0.0,0.0,0.5,0.5);
+    vtkSmartPointer<vtkRenderer> renderer2 =
+            vtkSmartPointer<vtkRenderer>::New();
+    renderer2->AddActor(cubeActor);
+    renderer2->SetBackground(0.0,1.0,0.0);
+    renderer2->SetViewport(0.5,0.0,1.0,0.5);
+    vtkSmartPointer<vtkRenderer> renderer3 =
+            vtkSmartPointer<vtkRenderer>::New();
+    renderer3->AddActor(sphereActor);
+    renderer3->SetBackground(0.0,0.0,1.0);
+    renderer3->SetViewport(0.0,0.5,0.5,1.0);
+    vtkSmartPointer<vtkRenderer> renderer4 =
+            vtkSmartPointer<vtkRenderer>::New();
+    renderer4->AddActor(cylinderActor);
+    renderer4->SetBackground(1.0,1.0,0.0);
+    renderer4->SetViewport(0.5,0.5,1.0,1.0);
 
     vtkSmartPointer<vtkRenderWindow> renWin =
-        vtkSmartPointer<vtkRenderWindow>::New();
-    renWin->AddRenderer( renderer );
-    renWin->SetSize( 640, 480 );
+            vtkSmartPointer<vtkRenderWindow>::New();
+    renWin->AddRenderer(renderer1);
+    renWin->AddRenderer(renderer2);
+    renWin->AddRenderer(renderer3);
+    renWin->AddRenderer(renderer4);
+    renWin->SetSize(800,600);
     renWin->Render();
-    renWin->SetWindowName("TextureExample");
+    renWin->SetWindowName("ViewPort");
 
-    vtkSmartPointer<vtkRenderWindowInteractor> iren =
-        vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    iren->SetRenderWindow(renWin);
+    vtkSmartPointer<vtkRenderWindowInteractor> interactor =
+            vtkSmartPointer<vtkRenderWindowInteractor>::New();
+    interactor->SetRenderWindow(renWin);
 
-    iren->Initialize();
-    iren->Start();
+    interactor->Initialize();
+    interactor->Start();
 
     return EXIT_SUCCESS;
 }

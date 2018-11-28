@@ -2,7 +2,12 @@
 
 project(Chap01)
 
-set(VTK_DIR "D:/3rdParty/VTK-Default/lib/cmake/vtk-6.3")
+if(CMAKE_HOST_WIN32)
+    set(VTK_DIR "D:/3rdParty/VTK-Default/lib/cmake/vtk-6.3")
+elseif(CMAKE_HOST_UNIX)
+    set(VTK_DIR "/home/xiaoliang/opt/3rdParty/vtk/lib/cmake/vtk-6.3")
+endif()
+
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
 

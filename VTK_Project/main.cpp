@@ -1,24 +1,27 @@
 ﻿/**********************************************************************
 
-  文件名: 2.1_RenderCylinder.cpp
+  文件名: 2.5_ReferenceCounting.cpp
   Copyright (c) 张晓东, 罗火灵. All rights reserved.
-  更多信息请访问: 
+  更多信息请访问:
     http://www.vtkchina.org (VTK中国)
-	http://blog.csdn.net/www_doling_net (东灵工作室) 
+    http://blog.csdn.net/www_doling_net (东灵工作室)
 
 **********************************************************************/
 
 #include <vtkSmartPointer.h>
-#include <vtkRenderWindow.h>
-#include <vtkRenderer.h>
-#include <vtkActor.h>
-#include <vtkRenderWindowInteractor.h>
-
 #include <vtkBMPReader.h>
 #include <vtkImageData.h>
-#include <vtkImageViewer2.h>
+#include <vtkObject.h>
 
+// MyFunction函数：演示智能指针可以作为函数返回值
+vtkSmartPointer<vtkImageData> MyFunction()
+{
+    vtkSmartPointer<vtkImageData> myObject = vtkSmartPointer<vtkImageData>::New();
+    std::cout<<"MyFunction::myObject reference count = "<<myObject->GetReferenceCount()<<std::endl;
+    return myObject;
+}
 
+//测试文件：data/VTK-logo.bmp
 int main(int argc, char* argv[])
 {
     if (argc < 2)
@@ -26,58 +29,48 @@ int main(int argc, char* argv[])
         std::cout<<argv[0]<<" "<<"BMP-File(*.bmp)"<<std::endl;
         return EXIT_FAILURE;
     }
-
-    vtkSmartPointer<vtkBMPReader> reader =
-            vtkSmartPointer<vtkBMPReader>::New();
-    std::cout<<"Modification Time of reader (After New()): "
-            <<reader->GetMTime()<<std::endl;
+    //演示引用计数：
+    vtkSmartPointer<vtkBMPReader> reader = vtkSmartPointer<vtkBMPReader>::New();
     reader->SetFileName(argv[1]);
-    std::cout<<"Modification Time of reader (After SetFileName()): "
-            <<reader->GetMTime()<<std::endl;
-
-    vtkImageData *imageData = reader->GetOutput();
-    std::cout<<"Modification Time of reader (After GetOutput()): "
-            <<reader->GetMTime()<<std::endl;
     reader->Update();
-    std::cout<<"Modification Time of reader (After Update()): "
-            <<reader->GetMTime()<<std::endl;
 
-    int extent[6];
-    imageData->GetExtent(extent);
-    std::cout<<"Extent of image: "<<extent[0]<<" "
-        <<extent[1]<<" "<<extent[2]<<" "<<extent[3]<<" "
-        <<extent[4]<<" "<<extent[5]<<" "<<std::endl;
+    std::cout<<"Reference Count of reader->GetOutput (Before Assignment) = "
+        <<reader->GetOutput()->GetReferenceCount()<<std::endl;
 
-    vtkSmartPointer<vtkImageViewer2> viewer =
-            vtkSmartPointer<vtkImageViewer2>::New();
+    vtkSmartPointer<vtkImageData> image1 = reader->GetOutput();
+    std::cout<<"Reference Count of reader->GetOutput (Assign to image1) = "
+        <<reader->GetOutput()->GetReferenceCount()<<std::endl;
+    std::cout<<"Reference Count of image1 = "
+        <<image1->GetReferenceCount()<<std::endl;
 
-    //////////////////////////////////////渲染引擎部分////////////////////////////////////
-//    vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
-//    actor->SetMapper(mapper);
+    vtkSmartPointer<vtkImageData> image2 = reader->GetOutput();
+    std::cout<<"Reference Count of reader->GetOutput (Assign to image2) = "
+        <<reader->GetOutput()->GetReferenceCount()<<std::endl;
+    std::cout<<"Reference Count of image2 = "
+        <<image2->GetReferenceCount()<<std::endl;
+    //////////////////////////////////////////////////////////////////////////
 
-//    vtkSmartPointer<vtkRenderer> renderer =
-//        vtkSmartPointer<vtkRenderer>::New();
-//    renderer->AddActor(actor);
-//    renderer->SetBackground(1.0, 1.0, 1.0);
+    //////////////////////////////////////////////////////////////////////////
+    //演示智能指针可以作为函数返回值
+    //由于函数MyFunction()的返回值是通过拷贝的方式，
+    //将数据赋予调用的变量，因此该数据的引用计数保持不变
+    std::cout<<"myObject reference count = "
+        <<MyFunction()->GetReferenceCount()<<std::endl;
 
-//    vtkSmartPointer<vtkRenderWindow> renWin =
-//        vtkSmartPointer<vtkRenderWindow>::New();
-//    renWin->AddRenderer(renderer);
-//    renWin->SetSize( 800, 600 );
-//    renWin->Render();
-//    renWin->SetWindowName("vtkPipelineDemo");
+    vtkSmartPointer<vtkImageData> MyImageData = MyFunction();
+    std::cout<<"MyFunction return value reference count = "
+        <<MyFunction()->GetReferenceCount()<<std::endl;
 
-    vtkSmartPointer<vtkRenderWindowInteractor> interactor =
-        vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    viewer->SetupInteractor(interactor);
-    viewer->SetInputData(imageData);
-    viewer->Render();
+    std::cout<<"MyImageData reference count = "
+        <<MyImageData->GetReferenceCount()<<std::endl;
+    //////////////////////////////////////////////////////////////////////////
 
-    viewer->SetSize(800,600);
-    viewer->GetRenderWindow()->SetWindowName("vtkPipelineExecute");
+    //////////////////////////////////////////////////////////////////////////
+    //如果没有给对象分配内存，仍然可以使用智能指针:
+    vtkSmartPointer<vtkBMPReader> Reader = vtkSmartPointer<vtkBMPReader>::New();
+    vtkImageData* pd = Reader->GetOutput();
+    //////////////////////////////////////////////////////////////////////////
 
-    interactor->Initialize();
-    interactor->Start();
-
+    system("pause");
     return EXIT_SUCCESS;
 }

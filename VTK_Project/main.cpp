@@ -9,32 +9,35 @@
 **********************************************************************/
 
 #include <vtkSmartPointer.h>
-//#include <vtkPNGReader.h>
-#include <vtkImageReader2.h>
-#include <vtkImageReader2Factory.h>
-#include <vtkJPEGWriter.h>
+#include <vtkJPEGReader.h>
 #include <vtkImageViewer2.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkInteractorStyleImage.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
+#include <vtkStringArray.h>
 
 int main(int argc, char* argv[])
 {
-    if(argc < 2)
+//    if(argc < 2)
+//    {
+//        std::cout<<argv[0]<<" "<<"head%03d.jpg"<<std::endl;
+//        return EXIT_FAILURE;
+//    }
+
+    vtkSmartPointer<vtkStringArray> fileArray =
+            vtkSmartPointer<vtkStringArray>::New();
+    char fileName[128];
+    for(int i=1; i<100; i++)
     {
-        std::cout<<argv[0]<<" "<<"PNG-File(*.png)"<<std::endl;
-        return EXIT_FAILURE;
+        sprintf(fileName,"../data/Head/head%03d.jpg",i);
+        vtkstd::string fileStr(fileName);
+        fileArray->InsertNextValue(fileStr);
     }
 
-//    vtkSmartPointer<vtkPNGReader> reader =
-//            vtkSmartPointer<vtkPNGReader>::New();
-//    reader->SetFileName(argv[1]);
-    vtkSmartPointer<vtkImageReader2Factory> readerFactory =
-            vtkSmartPointer<vtkImageReader2Factory>::New();
-    vtkImageReader2 *reader = readerFactory->CreateImageReader2(argv[1]);
-    reader->SetFileName(argv[1]);
-    reader->Update();
+    vtkSmartPointer<vtkJPEGReader> reader =
+            vtkSmartPointer<vtkJPEGReader>::New();
+    reader->SetFileNames(fileArray);
 
     vtkSmartPointer<vtkInteractorStyleImage> style =
             vtkSmartPointer<vtkInteractorStyleImage>::New();
@@ -48,20 +51,16 @@ int main(int argc, char* argv[])
             vtkSmartPointer<vtkRenderWindowInteractor>::New();
     renderWindowInteractor->SetInteractorStyle(style);
 
+    imageViewer->SetSlice(50);
+//    imageViewer->SetSliceOrientationToXY();
+//    imageViewer->SetSliceOrientationToXZ();
+    imageViewer->SetSliceOrientationToYZ();
     imageViewer->SetupInteractor(renderWindowInteractor);
     imageViewer->Render();
-    imageViewer->GetRenderer()->ResetCamera();
-    imageViewer->Render();
+    imageViewer->GetRenderer()->SetBackground(1.0,1.0,1.0);
 
     imageViewer->SetSize(800,600);
-    imageViewer->GetRenderWindow()->SetWindowName("ReadUnknowFormatImage");
-
-    //保存成JPG图像
-    vtkSmartPointer<vtkJPEGWriter> writer =
-            vtkSmartPointer<vtkJPEGWriter>::New();
-    writer->SetFileName("VTK-logo.jpg");
-    writer->SetInputConnection(reader->GetOutputPort());
-    writer->Write();
+    imageViewer->GetRenderWindow()->SetWindowName("ReadSeriesImages1");
 
     renderWindowInteractor->Start();
 

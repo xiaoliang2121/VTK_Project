@@ -9,7 +9,9 @@
 **********************************************************************/
 
 #include <vtkSmartPointer.h>
-#include <vtkPNGReader.h>
+//#include <vtkPNGReader.h>
+#include <vtkImageReader2.h>
+#include <vtkImageReader2Factory.h>
 #include <vtkJPEGWriter.h>
 #include <vtkImageViewer2.h>
 #include <vtkRenderWindowInteractor.h>
@@ -25,9 +27,14 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    vtkSmartPointer<vtkPNGReader> reader =
-            vtkSmartPointer<vtkPNGReader>::New();
+//    vtkSmartPointer<vtkPNGReader> reader =
+//            vtkSmartPointer<vtkPNGReader>::New();
+//    reader->SetFileName(argv[1]);
+    vtkSmartPointer<vtkImageReader2Factory> readerFactory =
+            vtkSmartPointer<vtkImageReader2Factory>::New();
+    vtkImageReader2 *reader = readerFactory->CreateImageReader2(argv[1]);
     reader->SetFileName(argv[1]);
+    reader->Update();
 
     vtkSmartPointer<vtkInteractorStyleImage> style =
             vtkSmartPointer<vtkInteractorStyleImage>::New();
@@ -47,7 +54,7 @@ int main(int argc, char* argv[])
     imageViewer->Render();
 
     imageViewer->SetSize(800,600);
-    imageViewer->GetRenderWindow()->SetWindowName("ReadWriteSingleImage");
+    imageViewer->GetRenderWindow()->SetWindowName("ReadUnknowFormatImage");
 
     //保存成JPG图像
     vtkSmartPointer<vtkJPEGWriter> writer =

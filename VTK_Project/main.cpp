@@ -26,20 +26,18 @@ int main(int argc, char* argv[])
 //        return EXIT_FAILURE;
 //    }
 
-    vtkSmartPointer<vtkImageCanvasSource2D> canvas =
-            vtkSmartPointer<vtkImageCanvasSource2D>::New();
-    canvas->SetScalarTypeToUnsignedChar();
-    canvas->SetNumberOfScalarComponents(1);
-    canvas->SetExtent(0,100,0,100,0,0);
-    canvas->SetDrawColor(0,0,0,0);
-    canvas->FillBox(0,100,0,100);
-    canvas->SetDrawColor(255,0,0,0);
-    canvas->FillBox(20,40,20,40);
-    canvas->Update();
+    vtkSmartPointer<vtkImageData> img =
+            vtkSmartPointer<vtkImageData>::New();
+    img->SetDimensions(16,16,1);
+    img->AllocateScalars(VTK_UNSIGNED_CHAR,1);
+
+    unsigned char *ptr = (unsigned char*)img->GetScalarPointer();
+    for(int i=0; i<16*16*1; i++)
+        *ptr++ = i%256;
 
     vtkSmartPointer<vtkImageActor> redActor =
             vtkSmartPointer<vtkImageActor>::New();
-    redActor->SetInputData(canvas->GetOutput());
+    redActor->SetInputData(img);
 
     double redViewport[4] = {0.0, 0.0, 1.0, 1.0};
     vtkSmartPointer<vtkRenderer> redRenderer =
@@ -55,7 +53,7 @@ int main(int argc, char* argv[])
     renderWindow->AddRenderer(redRenderer);
     renderWindow->SetSize( 800, 600 );
     renderWindow->Render();
-    renderWindow->SetWindowName("ImageCanvasSource2D");
+    renderWindow->SetWindowName("CreateVTKImageData");
 
     // Setup render window interactor
     vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =

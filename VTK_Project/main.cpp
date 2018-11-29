@@ -25,19 +25,22 @@ int main(int argc, char* argv[])
 //        return EXIT_FAILURE;
 //    }
 
-    vtkSmartPointer<vtkStringArray> fileArray =
-            vtkSmartPointer<vtkStringArray>::New();
-    char fileName[128];
-    for(int i=1; i<100; i++)
-    {
-        sprintf(fileName,"../data/Head/head%03d.jpg",i);
-        vtkstd::string fileStr(fileName);
-        fileArray->InsertNextValue(fileStr);
-    }
+//    vtkSmartPointer<vtkStringArray> fileArray =
+//            vtkSmartPointer<vtkStringArray>::New();
+//    char fileName[128];
+//    for(int i=1; i<100; i++)
+//    {
+//        sprintf(fileName,"../data/Head/head%03d.jpg",i);
+//        vtkstd::string fileStr(fileName);
+//        fileArray->InsertNextValue(fileStr);
+//    }
 
     vtkSmartPointer<vtkJPEGReader> reader =
             vtkSmartPointer<vtkJPEGReader>::New();
-    reader->SetFileNames(fileArray);
+    reader->SetFilePrefix("../data/Head/head");
+    reader->SetFilePattern("%s%03d.jpg");
+    reader->SetDataExtent(0,255,0,255,1,100);
+//    reader->Update();
 
     vtkSmartPointer<vtkInteractorStyleImage> style =
             vtkSmartPointer<vtkInteractorStyleImage>::New();
@@ -52,9 +55,9 @@ int main(int argc, char* argv[])
     renderWindowInteractor->SetInteractorStyle(style);
 
     imageViewer->SetSlice(50);
-//    imageViewer->SetSliceOrientationToXY();
+    imageViewer->SetSliceOrientationToXY();
 //    imageViewer->SetSliceOrientationToXZ();
-    imageViewer->SetSliceOrientationToYZ();
+//    imageViewer->SetSliceOrientationToYZ();
     imageViewer->SetupInteractor(renderWindowInteractor);
     imageViewer->Render();
     imageViewer->GetRenderer()->SetBackground(1.0,1.0,1.0);

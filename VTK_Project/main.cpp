@@ -16,6 +16,7 @@
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
 #include <vtkStringArray.h>
+#include <vtkImageAppend.h>
 
 int main(int argc, char* argv[])
 {
@@ -35,12 +36,26 @@ int main(int argc, char* argv[])
 //        fileArray->InsertNextValue(fileStr);
 //    }
 
+//    vtkSmartPointer<vtkJPEGReader> reader =
+//            vtkSmartPointer<vtkJPEGReader>::New();
+//    reader->SetFilePrefix("../data/Head/head");
+//    reader->SetFilePattern("%s%03d.jpg");
+//    reader->SetDataExtent(0,255,0,255,1,100);
+//    reader->Update();
+
+    vtkSmartPointer<vtkImageAppend> append =
+            vtkSmartPointer<vtkImageAppend>::New();
+    append->SetAppendAxis(2);
+
     vtkSmartPointer<vtkJPEGReader> reader =
             vtkSmartPointer<vtkJPEGReader>::New();
-    reader->SetFilePrefix("../data/Head/head");
-    reader->SetFilePattern("%s%03d.jpg");
-    reader->SetDataExtent(0,255,0,255,1,100);
-//    reader->Update();
+    char fileName[128];
+    for(int i=1; i<100; i++)
+    {
+        sprintf(fileName,"../data/Head/head%03d.jpg",i);
+        reader->SetFileName(fileName);
+        append->AddInputConnection(reader->GetOutputPort());
+    }
 
     vtkSmartPointer<vtkInteractorStyleImage> style =
             vtkSmartPointer<vtkInteractorStyleImage>::New();
@@ -63,7 +78,7 @@ int main(int argc, char* argv[])
     imageViewer->GetRenderer()->SetBackground(1.0,1.0,1.0);
 
     imageViewer->SetSize(800,600);
-    imageViewer->GetRenderWindow()->SetWindowName("ReadSeriesImages1");
+    imageViewer->GetRenderWindow()->SetWindowName("ReadSeriesImages3");
 
     renderWindowInteractor->Start();
 

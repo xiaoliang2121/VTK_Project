@@ -12,60 +12,62 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindowInteractor.h>
-#include <vtkInteractorStyleTrackballCamera.h>
-#include <vtkPolyDataMapper.h>
-#include <vtkPlaneSource.h>
-#include <vtkActor.h>
-#include <vtkProperty.h>
-#include <vtkJPEGReader.h>
-#include <vtkTexture.h>
+
+#include <vtkImageData.h>
+#include <vtkImageCanvasSource2D.h>
+#include <vtkInteractorStyleImage.h>
+#include <vtkImageActor.h>
 
 int main(int argc, char* argv[])
 {
-    if(argc < 2)
-    {
-        std::cout<<argv[0]<<" "<<"TextureFile(*.jpg)"<<std::endl;
-        return EXIT_FAILURE;
-    }
+//    if(argc < 2)
+//    {
+//        std::cout<<argv[0]<<" "<<"TextureFile(*.jpg)"<<std::endl;
+//        return EXIT_FAILURE;
+//    }
 
-    vtkSmartPointer<vtkJPEGReader> reader =
-            vtkSmartPointer<vtkJPEGReader>::New();
-    reader->SetFileName(argv[1]);
+    vtkSmartPointer<vtkImageCanvasSource2D> canvas =
+            vtkSmartPointer<vtkImageCanvasSource2D>::New();
+    canvas->SetScalarTypeToUnsignedChar();
+    canvas->SetNumberOfScalarComponents(1);
+    canvas->SetExtent(0,100,0,100,0,0);
+    canvas->SetDrawColor(0,0,0,0);
+    canvas->FillBox(0,100,0,100);
+    canvas->SetDrawColor(255,0,0,0);
+    canvas->FillBox(20,40,20,40);
+    canvas->Update();
 
-    vtkSmartPointer<vtkTexture> texture =
-            vtkSmartPointer<vtkTexture>::New();
-    texture->SetInputConnection(reader->GetOutputPort());
-    texture->InterpolateOn();
+    vtkSmartPointer<vtkImageActor> redActor =
+            vtkSmartPointer<vtkImageActor>::New();
+    redActor->SetInputData(canvas->GetOutput());
 
-    vtkSmartPointer<vtkPlaneSource> plane =
-            vtkSmartPointer<vtkPlaneSource>::New();
-    vtkSmartPointer<vtkPolyDataMapper> mapper =
-            vtkSmartPointer<vtkPolyDataMapper>::New();
-    mapper->SetInputConnection(plane->GetOutputPort());
+    double redViewport[4] = {0.0, 0.0, 1.0, 1.0};
+    vtkSmartPointer<vtkRenderer> redRenderer =
+            vtkSmartPointer<vtkRenderer>::New();
+    redRenderer->SetViewport(redViewport);
+    redRenderer->AddActor(redActor);
+    redRenderer->ResetCamera();
+    redRenderer->SetBackground(1.0,1.0,1.0);
 
-    vtkSmartPointer<vtkActor> actor =
-            vtkSmartPointer<vtkActor>::New();
-    actor->SetMapper(mapper);
-    actor->SetTexture(texture);
-
-    vtkSmartPointer<vtkRenderer> renderer =
-        vtkSmartPointer<vtkRenderer>::New();
-    renderer->AddActor( actor );
-    renderer->SetBackground( 1.0, 1.0, 1.0 );
-
-    vtkSmartPointer<vtkRenderWindow> renWin =
+    // Setup render window
+    vtkSmartPointer<vtkRenderWindow> renderWindow =
         vtkSmartPointer<vtkRenderWindow>::New();
-    renWin->AddRenderer( renderer );
-    renWin->SetSize( 640, 480 );
-    renWin->Render();
-    renWin->SetWindowName("TextureExample");
+    renderWindow->AddRenderer(redRenderer);
+    renderWindow->SetSize( 800, 600 );
+    renderWindow->Render();
+    renderWindow->SetWindowName("ImageCanvasSource2D");
 
-    vtkSmartPointer<vtkRenderWindowInteractor> iren =
+    // Setup render window interactor
+    vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
         vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    iren->SetRenderWindow(renWin);
+    vtkSmartPointer<vtkInteractorStyleImage> style =
+        vtkSmartPointer<vtkInteractorStyleImage>::New();
 
-    iren->Initialize();
-    iren->Start();
+    renderWindowInteractor->SetInteractorStyle(style);
+    // Render and start interaction
+    renderWindowInteractor->SetRenderWindow(renderWindow);
+    renderWindowInteractor->Initialize();
+    renderWindowInteractor->Start();
 
     return EXIT_SUCCESS;
 }

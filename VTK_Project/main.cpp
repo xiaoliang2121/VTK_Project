@@ -9,63 +9,54 @@
 **********************************************************************/
 
 #include <vtkSmartPointer.h>
-#include <vtkRenderWindow.h>
-#include <vtkRenderer.h>
+#include <vtkPNGReader.h>
+#include <vtkJPEGWriter.h>
+#include <vtkImageViewer2.h>
 #include <vtkRenderWindowInteractor.h>
-#include <vtkInteractorStyleTrackballCamera.h>
-#include <vtkPolyDataMapper.h>
-#include <vtkPlaneSource.h>
-#include <vtkActor.h>
-#include <vtkProperty.h>
-#include <vtkJPEGReader.h>
-#include <vtkTexture.h>
+#include <vtkInteractorStyleImage.h>
+#include <vtkRenderer.h>
+#include <vtkRenderWindow.h>
 
 int main(int argc, char* argv[])
 {
     if(argc < 2)
     {
-        std::cout<<argv[0]<<" "<<"TextureFile(*.jpg)"<<std::endl;
+        std::cout<<argv[0]<<" "<<"PNG-File(*.png)"<<std::endl;
         return EXIT_FAILURE;
     }
 
-    vtkSmartPointer<vtkJPEGReader> reader =
-            vtkSmartPointer<vtkJPEGReader>::New();
+    vtkSmartPointer<vtkPNGReader> reader =
+            vtkSmartPointer<vtkPNGReader>::New();
     reader->SetFileName(argv[1]);
 
-    vtkSmartPointer<vtkTexture> texture =
-            vtkSmartPointer<vtkTexture>::New();
-    texture->SetInputConnection(reader->GetOutputPort());
-    texture->InterpolateOn();
+    vtkSmartPointer<vtkInteractorStyleImage> style =
+            vtkSmartPointer<vtkInteractorStyleImage>::New();
 
-    vtkSmartPointer<vtkPlaneSource> plane =
-            vtkSmartPointer<vtkPlaneSource>::New();
-    vtkSmartPointer<vtkPolyDataMapper> mapper =
-            vtkSmartPointer<vtkPolyDataMapper>::New();
-    mapper->SetInputConnection(plane->GetOutputPort());
+    //显示读取的单幅PNG图像
+    vtkSmartPointer<vtkImageViewer2> imageViewer =
+            vtkSmartPointer<vtkImageViewer2>::New();
+    imageViewer->SetInputConnection(reader->GetOutputPort());
 
-    vtkSmartPointer<vtkActor> actor =
-            vtkSmartPointer<vtkActor>::New();
-    actor->SetMapper(mapper);
-    actor->SetTexture(texture);
+    vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
+            vtkSmartPointer<vtkRenderWindowInteractor>::New();
+    renderWindowInteractor->SetInteractorStyle(style);
 
-    vtkSmartPointer<vtkRenderer> renderer =
-        vtkSmartPointer<vtkRenderer>::New();
-    renderer->AddActor( actor );
-    renderer->SetBackground( 1.0, 1.0, 1.0 );
+    imageViewer->SetupInteractor(renderWindowInteractor);
+    imageViewer->Render();
+    imageViewer->GetRenderer()->ResetCamera();
+    imageViewer->Render();
 
-    vtkSmartPointer<vtkRenderWindow> renWin =
-        vtkSmartPointer<vtkRenderWindow>::New();
-    renWin->AddRenderer( renderer );
-    renWin->SetSize( 640, 480 );
-    renWin->Render();
-    renWin->SetWindowName("TextureExample");
+    imageViewer->SetSize(800,600);
+    imageViewer->GetRenderWindow()->SetWindowName("ReadWriteSingleImage");
 
-    vtkSmartPointer<vtkRenderWindowInteractor> iren =
-        vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    iren->SetRenderWindow(renWin);
+    //保存成JPG图像
+    vtkSmartPointer<vtkJPEGWriter> writer =
+            vtkSmartPointer<vtkJPEGWriter>::New();
+    writer->SetFileName("VTK-logo.jpg");
+    writer->SetInputConnection(reader->GetOutputPort());
+    writer->Write();
 
-    iren->Initialize();
-    iren->Start();
+    renderWindowInteractor->Start();
 
     return EXIT_SUCCESS;
 }

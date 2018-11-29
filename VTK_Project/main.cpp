@@ -13,31 +13,41 @@
 #include <vtkPolyData.h>
 #include <vtkPolyDataWriter.h>
 #include <vtkCellArray.h>
+#include <vtkLine.h>
 
 int main(int argc, char* argv[])
 {
-    double X[3] = {1.0,0.0,0.0};
-    double Y[3] = {0.0,0.0,1.0};
-    double Z[3] = {0.0,0.0,0.0};
-
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    vtkSmartPointer<vtkCellArray> vertices = vtkSmartPointer<vtkCellArray>::New();
+    points->InsertNextPoint ( 1.0, 0.0, 0.0 ); //返回第一个点的ID：0
+    points->InsertNextPoint ( 0.0, 0.0, 1.0 ); //返回第二个点的ID：1
+    points->InsertNextPoint ( 0.0, 0.0, 0.0 ); //返回第三个点的ID：2
 
-    for(int i=0; i<3; i++)
-    {
-        vtkIdType pid;
-        pid = points->InsertNextPoint(X[i],Y[i],Z[i]);
-        vertices->InsertNextCell(1,&pid);
-    }
+    vtkSmartPointer<vtkLine> line0 = vtkSmartPointer<vtkLine>::New();
+    line0->GetPointIds()->SetId(0,0);
+    line0->GetPointIds()->SetId(1,1);
+
+    vtkSmartPointer<vtkLine> line1 = vtkSmartPointer<vtkLine>::New();
+    line1->GetPointIds()->SetId ( 0,1 );
+    line1->GetPointIds()->SetId ( 1,2 );
+
+    vtkSmartPointer<vtkLine> line2 = vtkSmartPointer<vtkLine>::New();
+    line2->GetPointIds()->SetId ( 0,2 );
+    line2->GetPointIds()->SetId ( 1,0 );
+
+    vtkSmartPointer<vtkCellArray> lines = vtkSmartPointer<vtkCellArray>::New();
+
+    lines->InsertNextCell(line0);
+    lines->InsertNextCell(line1);
+    lines->InsertNextCell(line2);
 
     vtkSmartPointer<vtkPolyData> polydata =
             vtkSmartPointer<vtkPolyData>::New();
     polydata->SetPoints(points);
-    polydata->SetVerts(vertices);
+    polydata->SetLines(lines);
 
     vtkSmartPointer<vtkPolyDataWriter> writer =
             vtkSmartPointer<vtkPolyDataWriter>::New();
-    writer->SetFileName("triangleVertex.vtk");
+    writer->SetFileName("TriangleLines.vtk");
     writer->SetInputData(polydata);
     writer->Write();
 

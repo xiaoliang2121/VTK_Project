@@ -13,60 +13,40 @@
 #include <vtkRenderer.h>
 #include <vtkRenderWindowInteractor.h>
 
-#include <vtkImageData.h>
-#include <vtkImageCanvasSource2D.h>
-#include <vtkInteractorStyleImage.h>
-#include <vtkImageActor.h>
+#include <vtkImageViewer2.h>
+#include <vtkMetaImageReader.h>
 
 int main(int argc, char* argv[])
 {
-//    if(argc < 2)
-//    {
-//        std::cout<<argv[0]<<" "<<"TextureFile(*.jpg)"<<std::endl;
-//        return EXIT_FAILURE;
-//    }
+    if(argc < 2)
+    {
+        std::cout<<argv[0]<<" "<<"ImageFile(*.mhd)"<<std::endl;
+        return EXIT_FAILURE;
+    }
 
-    vtkSmartPointer<vtkImageCanvasSource2D> canvas =
-            vtkSmartPointer<vtkImageCanvasSource2D>::New();
-    canvas->SetScalarTypeToUnsignedChar();
-    canvas->SetNumberOfScalarComponents(1);
-    canvas->SetExtent(0,100,0,100,0,0);
-    canvas->SetDrawColor(0,0,0,0);
-    canvas->FillBox(0,100,0,100);
-    canvas->SetDrawColor(255,0,0,0);
-    canvas->FillBox(20,40,20,40);
-    canvas->Update();
+    vtkSmartPointer<vtkMetaImageReader> reader =
+            vtkSmartPointer<vtkMetaImageReader>::New();
+    reader->SetFileName(argv[1]);
+    reader->Update();
 
-    vtkSmartPointer<vtkImageActor> redActor =
-            vtkSmartPointer<vtkImageActor>::New();
-    redActor->SetInputData(canvas->GetOutput());
+    vtkSmartPointer<vtkImageViewer2> imageViewer =
+            vtkSmartPointer<vtkImageViewer2>::New();
+    imageViewer->SetInputConnection(reader->GetOutputPort());
 
-    double redViewport[4] = {0.0, 0.0, 1.0, 1.0};
-    vtkSmartPointer<vtkRenderer> redRenderer =
-            vtkSmartPointer<vtkRenderer>::New();
-    redRenderer->SetViewport(redViewport);
-    redRenderer->AddActor(redActor);
-    redRenderer->ResetCamera();
-    redRenderer->SetBackground(1.0,1.0,1.0);
-
-    // Setup render window
-    vtkSmartPointer<vtkRenderWindow> renderWindow =
-        vtkSmartPointer<vtkRenderWindow>::New();
-    renderWindow->AddRenderer(redRenderer);
-    renderWindow->SetSize( 800, 600 );
-    renderWindow->Render();
-    renderWindow->SetWindowName("ImageCanvasSource2D");
-
-    // Setup render window interactor
     vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
-        vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    vtkSmartPointer<vtkInteractorStyleImage> style =
-        vtkSmartPointer<vtkInteractorStyleImage>::New();
+            vtkSmartPointer<vtkRenderWindowInteractor>::New();
+    imageViewer->SetupInteractor(renderWindowInteractor);
 
-    renderWindowInteractor->SetInteractorStyle(style);
-    // Render and start interaction
-    renderWindowInteractor->SetRenderWindow(renderWindow);
-    renderWindowInteractor->Initialize();
+    imageViewer->SetColorLevel(500);
+    imageViewer->SetColorWindow(2000);
+    imageViewer->SetSlice(40);
+    imageViewer->SetSliceOrientationToXY();
+    imageViewer->Render();
+
+    imageViewer->GetRenderer()->SetBackground(1.0,1.0,1.0);
+    imageViewer->SetSize(800,600);
+    imageViewer->GetRenderWindow()->SetWindowName("DisplayImageExample");
+
     renderWindowInteractor->Start();
 
     return EXIT_SUCCESS;

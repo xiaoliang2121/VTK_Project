@@ -12,21 +12,32 @@
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
 #include <vtkPolyDataWriter.h>
+#include <vtkCellArray.h>
 
 int main(int argc, char* argv[])
 {
+    double X[3] = {1.0,0.0,0.0};
+    double Y[3] = {0.0,0.0,1.0};
+    double Z[3] = {0.0,0.0,0.0};
+
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    points->InsertNextPoint(1.0,0.0,0.0);
-    points->InsertNextPoint(0.0,0.0,0.0);
-    points->InsertNextPoint(0.0,1.0,0.0);
+    vtkSmartPointer<vtkCellArray> vertices = vtkSmartPointer<vtkCellArray>::New();
+
+    for(int i=0; i<3; i++)
+    {
+        vtkIdType pid;
+        pid = points->InsertNextPoint(X[i],Y[i],Z[i]);
+        vertices->InsertNextCell(1,&pid);
+    }
 
     vtkSmartPointer<vtkPolyData> polydata =
             vtkSmartPointer<vtkPolyData>::New();
     polydata->SetPoints(points);
+    polydata->SetVerts(vertices);
 
     vtkSmartPointer<vtkPolyDataWriter> writer =
             vtkSmartPointer<vtkPolyDataWriter>::New();
-    writer->SetFileName("triangle.vtk");
+    writer->SetFileName("triangleVertex.vtk");
     writer->SetInputData(polydata);
     writer->Write();
 

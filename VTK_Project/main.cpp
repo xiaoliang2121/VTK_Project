@@ -8,77 +8,44 @@
 
 **********************************************************************/
 
-#include <vtkSmartPointer.h>
-#include <vtkJPEGReader.h>
-#include <vtkImageViewer2.h>
-#include <vtkRenderWindowInteractor.h>
-#include <vtkInteractorStyleImage.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
-#include <vtkStringArray.h>
-#include <vtkImageAppend.h>
+#include <vtkRenderWindowInteractor.h>
+#include <vtk3DSImporter.h>
+#include <vtkDataSet.h>
+#include <vtkPolyData.h>
+#include <vtkSmartPointer.h>
 
-int main(int argc, char* argv[])
+//测试文件：data/R8.3ds
+int main ( int argc, char *argv[])
 {
-//    if(argc < 2)
-//    {
-//        std::cout<<argv[0]<<" "<<"head%03d.jpg"<<std::endl;
-//        return EXIT_FAILURE;
-//    }
-
-//    vtkSmartPointer<vtkStringArray> fileArray =
-//            vtkSmartPointer<vtkStringArray>::New();
-//    char fileName[128];
-//    for(int i=1; i<100; i++)
-//    {
-//        sprintf(fileName,"../data/Head/head%03d.jpg",i);
-//        vtkstd::string fileStr(fileName);
-//        fileArray->InsertNextValue(fileStr);
-//    }
-
-//    vtkSmartPointer<vtkJPEGReader> reader =
-//            vtkSmartPointer<vtkJPEGReader>::New();
-//    reader->SetFilePrefix("../data/Head/head");
-//    reader->SetFilePattern("%s%03d.jpg");
-//    reader->SetDataExtent(0,255,0,255,1,100);
-//    reader->Update();
-
-    vtkSmartPointer<vtkImageAppend> append =
-            vtkSmartPointer<vtkImageAppend>::New();
-    append->SetAppendAxis(2);
-
-    vtkSmartPointer<vtkJPEGReader> reader =
-            vtkSmartPointer<vtkJPEGReader>::New();
-    char fileName[128];
-    for(int i=1; i<100; i++)
+    if(argc != 2)
     {
-        sprintf(fileName,"../data/Head/head%03d.jpg",i);
-        reader->SetFileName(fileName);
-        append->AddInputConnection(reader->GetOutputPort());
+        std::cout << "Required arguments: Filename(*.3ds)" << std::endl;
+        return EXIT_FAILURE;
     }
 
-    vtkSmartPointer<vtkInteractorStyleImage> style =
-            vtkSmartPointer<vtkInteractorStyleImage>::New();
+    std::string filename = argv[1];
+    std::cout << "Reading " << filename << std::endl;
 
-    //显示读取的单幅PNG图像
-    vtkSmartPointer<vtkImageViewer2> imageViewer =
-            vtkSmartPointer<vtkImageViewer2>::New();
-    imageViewer->SetInputConnection(reader->GetOutputPort());
+    // 3DS Import
+    vtkSmartPointer<vtk3DSImporter> importer = vtkSmartPointer<vtk3DSImporter>::New();
+    importer->SetFileName ( filename.c_str() );
+    importer->ComputeNormalsOn();
+    importer->Read();
 
+    vtkSmartPointer<vtkRenderer> renderer = importer->GetRenderer();
+    vtkSmartPointer<vtkRenderWindow> renderWindow = importer->GetRenderWindow();
     vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
-            vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    renderWindowInteractor->SetInteractorStyle(style);
+        vtkSmartPointer<vtkRenderWindowInteractor>::New();
+    renderWindowInteractor->SetRenderWindow(renderWindow);
 
-    imageViewer->SetSlice(50);
-    imageViewer->SetSliceOrientationToXY();
-//    imageViewer->SetSliceOrientationToXZ();
-//    imageViewer->SetSliceOrientationToYZ();
-    imageViewer->SetupInteractor(renderWindowInteractor);
-    imageViewer->Render();
-    imageViewer->GetRenderer()->SetBackground(1.0,1.0,1.0);
-
-    imageViewer->SetSize(800,600);
-    imageViewer->GetRenderWindow()->SetWindowName("ReadSeriesImages3");
+    renderer->GradientBackgroundOn();
+    renderer->SetBackground(1.0, 1.0, 1.0);
+    renderer->SetBackground2(0.0, 0.0, 0.0);
+    renderWindow->Render();
+    renderWindow->SetSize(640, 480);
+    renderWindow->SetWindowName("Import3DS");
 
     renderWindowInteractor->Start();
 

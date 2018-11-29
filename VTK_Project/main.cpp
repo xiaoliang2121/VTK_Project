@@ -11,45 +11,33 @@
 #include <vtkSmartPointer.h>
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
-#include <vtkPolyDataWriter.h>
-#include <vtkCellArray.h>
-#include <vtkLine.h>
+#include <vtkPointData.h>
+#include <vtkDoubleArray.h>
+#include <vtkFloatArray.h>
 
 int main(int argc, char* argv[])
 {
+    //创建点集数据：包含两个坐标点。
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    points->InsertNextPoint ( 1.0, 0.0, 0.0 ); //返回第一个点的ID：0
-    points->InsertNextPoint ( 0.0, 0.0, 1.0 ); //返回第二个点的ID：1
-    points->InsertNextPoint ( 0.0, 0.0, 0.0 ); //返回第三个点的ID：2
+    points->InsertNextPoint(0,0,0);
+    points->InsertNextPoint(1,0,0);
 
-    vtkSmartPointer<vtkLine> line0 = vtkSmartPointer<vtkLine>::New();
-    line0->GetPointIds()->SetId(0,0);
-    line0->GetPointIds()->SetId(1,1);
-
-    vtkSmartPointer<vtkLine> line1 = vtkSmartPointer<vtkLine>::New();
-    line1->GetPointIds()->SetId ( 0,1 );
-    line1->GetPointIds()->SetId ( 1,2 );
-
-    vtkSmartPointer<vtkLine> line2 = vtkSmartPointer<vtkLine>::New();
-    line2->GetPointIds()->SetId ( 0,2 );
-    line2->GetPointIds()->SetId ( 1,0 );
-
-    vtkSmartPointer<vtkCellArray> lines = vtkSmartPointer<vtkCellArray>::New();
-
-    lines->InsertNextCell(line0);
-    lines->InsertNextCell(line1);
-    lines->InsertNextCell(line2);
-
-    vtkSmartPointer<vtkPolyData> polydata =
-            vtkSmartPointer<vtkPolyData>::New();
+    //创建多边形数据。
+    vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
     polydata->SetPoints(points);
-    polydata->SetLines(lines);
 
-    vtkSmartPointer<vtkPolyDataWriter> writer =
-            vtkSmartPointer<vtkPolyDataWriter>::New();
-    writer->SetFileName("TriangleLines.vtk");
-    writer->SetInputData(polydata);
-    writer->Write();
+    //准备加入点数据的标量值，两个标量值分别为1和2。
+    vtkSmartPointer<vtkDoubleArray> weights = vtkSmartPointer<vtkDoubleArray>::New();
+    weights->SetNumberOfValues(2);
+    weights->SetValue(0, 1);
+    weights->SetValue(1, 2);
+
+    //先获取多边形数据的点数据指针，然后设置该点数据的标量属性值。
+    polydata->GetPointData()->SetScalars(weights);
+
+    //输出索引号为0的点的标量值。
+    double weight = vtkDoubleArray::SafeDownCast(polydata->GetPointData()->GetScalars())->GetValue(0);
+    std::cout << "double weight: " << weight << std::endl;
 
     return EXIT_SUCCESS;
 }

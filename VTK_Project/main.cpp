@@ -21,6 +21,11 @@
 #include <vtkTriangle.h>
 #include <vtkPointData.h>
 #include <vtkCellData.h>
+#include <vtkFloatArray.h>
+#include <vtkPlaneSource.h>
+#include <vtkCellDataToPointData.h>
+#include <vtkPointDataToCellData.h>
+#include <vtkDataSet.h>
 #include <vtkLookupTable.h>
 #include <vtkTransformTextureCoords.h>
 #include <vtkProperty.h>
@@ -34,69 +39,27 @@ int main(int argc, char* argv[])
 //        return EXIT_FAILURE;
 //    }
 
-    vtkSmartPointer<vtkPoints> points =
-            vtkSmartPointer<vtkPoints>::New();
-    points->InsertNextPoint(0.0,0.0,0.0);
-    points->InsertNextPoint(1.0,0.0,0.0);
-    points->InsertNextPoint(1.0,1.0,0.0);
-    points->InsertNextPoint(0.0,1.0,0.0);
-    points->InsertNextPoint(2.0,0.0,0.0);
+    vtkSmartPointer<vtkPlaneSource> gridSource =
+            vtkSmartPointer<vtkPlaneSource>::New();
+    gridSource->SetXResolution(3);
+    gridSource->SetYResolution(3);
+    gridSource->Update();
+    vtkSmartPointer<vtkPolyData> grid = gridSource->GetOutput();
 
-    vtkSmartPointer<vtkPolygon> polygon =
-            vtkSmartPointer<vtkPolygon>::New();
-    polygon->GetPointIds()->SetNumberOfIds(4);
-    polygon->GetPointIds()->SetId(0,0);
-    polygon->GetPointIds()->SetId(1,1);
-    polygon->GetPointIds()->SetId(2,2);
-    polygon->GetPointIds()->SetId(3,3);
+    vtkSmartPointer<vtkFloatArray> cellScalars =
+            vtkSmartPointer<vtkFloatArray>::New();
+    vtkSmartPointer<vtkFloatArray> cellVectors =
+            vtkSmartPointer<vtkFloatArray>::New();
+    cellVectors->SetNumberOfComponents(3);
 
-    vtkSmartPointer<vtkTriangle> triangle =
-            vtkSmartPointer<vtkTriangle>::New();
-    triangle->GetPointIds()->SetId(0,1);
-    triangle->GetPointIds()->SetId(1,2);
-    triangle->GetPointIds()->SetId(2,4);
+    for(int i=0; i<9; i++)
+    {
+        cellScalars->InsertNextValue(i+1);
+        cellVectors->InsertNextTuple3(0.0,0.0,0.0);
+    }
 
-    vtkSmartPointer<vtkCellArray> cells =
-            vtkSmartPointer<vtkCellArray>::New();
-    cells->InsertNextCell(polygon);
-    cells->InsertNextCell(triangle);
-
-    vtkSmartPointer<vtkPolyData> polygonPolyData =
-            vtkSmartPointer<vtkPolyData>::New();
-    polygonPolyData->SetPoints(points);
-    polygonPolyData->SetPolys(cells);
-
-    unsigned char red[3] = {255,0,0};
-    unsigned char green[3] = {0,255,0};
-    unsigned char blue[3] = {0,0,255};
-
-    vtkSmartPointer<vtkUnsignedCharArray> pointColors =
-            vtkSmartPointer<vtkUnsignedCharArray>::New();
-    pointColors->SetNumberOfComponents(3);
-    pointColors->InsertNextTupleValue(red);
-    pointColors->InsertNextTupleValue(green);
-    pointColors->InsertNextTupleValue(blue);
-    pointColors->InsertNextTupleValue(green);
-    pointColors->InsertNextTupleValue(red);
-    polygonPolyData->GetPointData()->SetScalars(pointColors);
-
-    vtkSmartPointer<vtkUnsignedCharArray> cellColors =
-            vtkSmartPointer<vtkUnsignedCharArray>::New();
-    cellColors->SetNumberOfComponents(3);
-    cellColors->InsertNextTupleValue(red);
-    cellColors->InsertNextTupleValue(green);
-    polygonPolyData->GetCellData()->SetScalars(cellColors);
-
-    vtkSmartPointer<vtkIntArray> pointfield =
-            vtkSmartPointer<vtkIntArray>::New();
-    pointfield->SetName("Field");
-    pointfield->SetNumberOfComponents(3);
-    pointfield->InsertNextTuple3(1,0,0);
-    pointfield->InsertNextTuple3(2,0,0);
-    pointfield->InsertNextTuple3(3,0,0);
-    pointfield->InsertNextTuple3(4,0,0);
-    pointfield->InsertNextTuple3(5,0,0);
-    polygonPolyData->GetPointData()->AddArray(pointfield);
+    grid->GetCellData()->SetScalars(cellScalars);
+    grid->GetCellData()->SetVectors(cellVectors);
 
     vtkSmartPointer<vtkLookupTable> lut =
             vtkSmartPointer<vtkLookupTable>::New();
@@ -116,13 +79,15 @@ int main(int argc, char* argv[])
 /// =============================================================================
     vtkSmartPointer<vtkPolyDataMapper> mapper =
             vtkSmartPointer<vtkPolyDataMapper>::New();
-    mapper->SetInputData(polygonPolyData);
+    mapper->SetInputData(grid);
 //    mapper->SetScalarModeToUseCellData();
 //    mapper->SetScalarModeToUsePointFieldData();
 //    mapper->ColorByArrayComponent("Filed",0);
 //    mapper->SelectColorArray("Filed");
 //    mapper->SetScalarRange(1,5);
 //    mapper->SetLookupTable(lut);
+    mapper->SetScalarRange(0,9);
+    mapper->SetLookupTable(lut);
 
     vtkSmartPointer<vtkActor> actor =
             vtkSmartPointer<vtkActor>::New();
@@ -139,7 +104,7 @@ int main(int argc, char* argv[])
     renderWindow->AddRenderer(renderer);
     renderWindow->SetSize( 800, 600 );
     renderWindow->Render();
-    renderWindow->SetWindowName("PolyDataNew");
+    renderWindow->SetWindowName("PolyDataAttribute");
 
     // Setup render window interactor
     vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =

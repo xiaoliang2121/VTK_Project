@@ -118,9 +118,9 @@ int main(int argc, char* argv[])
             vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputData(polygonPolyData);
 //    mapper->SetScalarModeToUseCellData();
-//    mapper->SetScalarModeToUsePointFieldData();
+    mapper->SetScalarModeToUsePointFieldData();
 //    mapper->ColorByArrayComponent("Filed",0);
-//    mapper->SelectColorArray("Filed");
+    mapper->SelectColorArray("Filed");
 //    mapper->SetScalarRange(1,5);
 //    mapper->SetLookupTable(lut);
 

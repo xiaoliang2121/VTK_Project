@@ -86,6 +86,15 @@ int main(int argc, char* argv[])
 //    mapper->SelectColorArray("Filed");
 //    mapper->SetScalarRange(1,5);
 //    mapper->SetLookupTable(lut);
+
+    // 测试单元属性数据转点属性数据
+    vtkSmartPointer<vtkCellDataToPointData> convert =
+        vtkSmartPointer<vtkCellDataToPointData>::New();
+    convert->SetInputData(grid);
+    convert->SetPassCellData(true);
+    convert->Update();
+    mapper->SetInputData((vtkPolyData*)convert->GetOutput());
+
     mapper->SetScalarRange(0,9);
     mapper->SetLookupTable(lut);
 

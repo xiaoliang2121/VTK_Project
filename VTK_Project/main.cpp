@@ -33,8 +33,8 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    vtkSmartPointer<vtkPolyDataReader> reader =
-            vtkSmartPointer<vtkPolyDataReader>::New();
+    vtkSmartPointer<vtkPLYReader> reader =
+            vtkSmartPointer<vtkPLYReader>::New();
     reader->SetFileName(argv[1]);
     reader->Update();
 

@@ -13,10 +13,11 @@
 #include <vtkRenderer.h>
 #include <vtkRenderWindowInteractor.h>
 
-#include <vtkImageData.h>
-#include <vtkImageCanvasSource2D.h>
-#include <vtkInteractorStyleImage.h>
-#include <vtkImageActor.h>
+#include <vtkConeSource.h>
+#include <vtkPolyDataMapper.h>
+#include <vtkPolyData.h>
+#include <vtkActor.h>
+#include <iostream>
 
 int main(int argc, char* argv[])
 {
@@ -26,44 +27,42 @@ int main(int argc, char* argv[])
 //        return EXIT_FAILURE;
 //    }
 
-    vtkSmartPointer<vtkImageCanvasSource2D> canvas =
-            vtkSmartPointer<vtkImageCanvasSource2D>::New();
-    canvas->SetScalarTypeToUnsignedChar();
-    canvas->SetNumberOfScalarComponents(1);
-    canvas->SetExtent(0,100,0,100,0,0);
-    canvas->SetDrawColor(0,0,0,0);
-    canvas->FillBox(0,100,0,100);
-    canvas->SetDrawColor(255,0,0,0);
-    canvas->FillBox(20,40,20,40);
-    canvas->Update();
+    vtkSmartPointer<vtkConeSource> coneSrc =
+            vtkSmartPointer<vtkConeSource>::New();
+    coneSrc->Update();
 
-    vtkSmartPointer<vtkImageActor> redActor =
-            vtkSmartPointer<vtkImageActor>::New();
-    redActor->SetInputData(canvas->GetOutput());
+    vtkSmartPointer<vtkPolyData> cone = coneSrc->GetOutput();
+    int nPoints = cone->GetNumberOfPoints();
+    int nCells = cone->GetNumberOfCells();
 
-    double redViewport[4] = {0.0, 0.0, 1.0, 1.0};
-    vtkSmartPointer<vtkRenderer> redRenderer =
+    std::cout<<"Points number:"<<nPoints<<std::endl;
+    std::cout<<"Cells  number:"<<nCells<<std::endl;
+
+    vtkSmartPointer<vtkPolyDataMapper> mapper =
+            vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputData(cone);
+
+    vtkSmartPointer<vtkActor> actor =
+            vtkSmartPointer<vtkActor>::New();
+    actor->SetMapper(mapper);
+
+    vtkSmartPointer<vtkRenderer> renderer =
             vtkSmartPointer<vtkRenderer>::New();
-    redRenderer->SetViewport(redViewport);
-    redRenderer->AddActor(redActor);
-    redRenderer->ResetCamera();
-    redRenderer->SetBackground(1.0,1.0,1.0);
+    renderer->AddActor(actor);
+    renderer->SetBackground(1.0,1.0,1.0);
 
     // Setup render window
     vtkSmartPointer<vtkRenderWindow> renderWindow =
         vtkSmartPointer<vtkRenderWindow>::New();
-    renderWindow->AddRenderer(redRenderer);
+    renderWindow->AddRenderer(renderer);
     renderWindow->SetSize( 800, 600 );
     renderWindow->Render();
-    renderWindow->SetWindowName("ImageCanvasSource2D");
+    renderWindow->SetWindowName("PolyDataSource");
 
     // Setup render window interactor
     vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
         vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    vtkSmartPointer<vtkInteractorStyleImage> style =
-        vtkSmartPointer<vtkInteractorStyleImage>::New();
 
-    renderWindowInteractor->SetInteractorStyle(style);
     // Render and start interaction
     renderWindowInteractor->SetRenderWindow(renderWindow);
     renderWindowInteractor->Initialize();

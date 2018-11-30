@@ -18,10 +18,11 @@
 #include <vtkScalarBarActor.h>
 #include <vtkPolyData.h>
 #include <vtkPolyDataMapper.h>
-#include <vtkCubeSource.h>
+#include <vtkSphereSource.h>
 #include <vtkProperty.h>
 #include <vtkTriangleFilter.h>
 #include <vtkMassProperties.h>
+#include <vtkDijkstraGraphGeodesicPath.h>
 
 int main(int argc, char* argv[])
 {
@@ -31,42 +32,52 @@ int main(int argc, char* argv[])
 //        return EXIT_FAILURE;
 //    }
 
-    vtkSmartPointer<vtkCubeSource> cubeSource =
-            vtkSmartPointer<vtkCubeSource>::New();
-    cubeSource->Update();
+    vtkSmartPointer<vtkSphereSource> sphereSource =
+            vtkSmartPointer<vtkSphereSource>::New();
+    sphereSource->Update();
 
-    vtkSmartPointer<vtkTriangleFilter> triFilter =
-            vtkSmartPointer<vtkTriangleFilter>::New();
-    triFilter->SetInputData(cubeSource->GetOutput());
-    triFilter->Update();
+    vtkSmartPointer<vtkDijkstraGraphGeodesicPath> dijkstra =
+            vtkSmartPointer<vtkDijkstraGraphGeodesicPath>::New();
+    dijkstra->SetInputData(sphereSource->GetOutput());
+    dijkstra->SetStartVertex(0);
+    dijkstra->SetEndVertex(10);
+    dijkstra->Update();
 
-    vtkSmartPointer<vtkMassProperties> massProp =
-            vtkSmartPointer<vtkMassProperties>::New();
-    massProp->SetInputData(triFilter->GetOutput());
-    float vol = massProp->GetVolume();
-    float area = massProp->GetSurfaceArea();
-    float maxArea = massProp->GetMaxCellArea();
-    float minArea = massProp->GetMinCellArea();
+//    vtkSmartPointer<vtkMassProperties> massProp =
+//            vtkSmartPointer<vtkMassProperties>::New();
+//    massProp->SetInputData(triFilter->GetOutput());
+//    float vol = massProp->GetVolume();
+//    float area = massProp->GetSurfaceArea();
+//    float maxArea = massProp->GetMaxCellArea();
+//    float minArea = massProp->GetMinCellArea();
 
-    std::cout<<"Volume      :"<<vol<<std::endl;
-    std::cout<<"Surface Area:"<<area<<std::endl;
-    std::cout<<"Max Area    :"<<maxArea<<std::endl;
-    std::cout<<"Min Area    :"<<minArea<<std::endl;
+//    std::cout<<"Volume      :"<<vol<<std::endl;
+//    std::cout<<"Surface Area:"<<area<<std::endl;
+//    std::cout<<"Max Area    :"<<maxArea<<std::endl;
+//    std::cout<<"Min Area    :"<<minArea<<std::endl;
+
+    vtkSmartPointer<vtkPolyDataMapper> pathMapper =
+            vtkSmartPointer<vtkPolyDataMapper>::New();
+    pathMapper->SetInputData(dijkstra->GetOutput());
+//    mapper->SetInputConnection(cubeSource->GetOutputPort());
+
+    vtkSmartPointer<vtkActor> pathActor =
+            vtkSmartPointer<vtkActor>::New();
+    pathActor->SetMapper(pathMapper);
+    pathActor->GetProperty()->SetColor(1,0,0);
+    pathActor->GetProperty()->SetLineWidth(4);
 
     vtkSmartPointer<vtkPolyDataMapper> mapper =
             vtkSmartPointer<vtkPolyDataMapper>::New();
-//    mapper->SetInputData(triFilter->GetOutput());
-    mapper->SetInputConnection(cubeSource->GetOutputPort());
+    mapper->SetInputData(sphereSource->GetOutput());
 
     vtkSmartPointer<vtkActor> actor =
             vtkSmartPointer<vtkActor>::New();
     actor->SetMapper(mapper);
-    actor->GetProperty()->SetColor(0,1,0);
-    actor->GetProperty()->SetEdgeColor(1,0,0);
-    actor->GetProperty()->SetEdgeVisibility(1);
 
     vtkSmartPointer<vtkRenderer> renderer =
             vtkSmartPointer<vtkRenderer>::New();
+    renderer->AddActor(pathActor);
     renderer->AddActor(actor);
     renderer->SetBackground(1.0,1.0,1.0);
 

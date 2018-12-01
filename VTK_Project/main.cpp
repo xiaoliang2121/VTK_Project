@@ -1,6 +1,6 @@
 ﻿/**********************************************************************
 
-  文件名: 6.7_PolyDataSurfaceReconstruction.cpp
+  文件名: 6.8_PolyDataLandmarkReg.cpp
   Copyright (c) 张晓东, 罗火灵. All rights reserved.
   更多信息请访问:
     http://www.vtkchina.org (VTK中国)
@@ -8,104 +8,126 @@
 
 **********************************************************************/
 
+#include <vtkPoints.h>
 #include <vtkSmartPointer.h>
-#include <vtkSurfaceReconstructionFilter.h>
-#include <vtkProgrammableSource.h>
-#include <vtkContourFilter.h>
-#include <vtkReverseSense.h>
+#include <vtkLandmarkTransform.h>
+#include <vtkMatrix4x4.h>
 #include <vtkPolyDataMapper.h>
-#include <vtkProperty.h>
-#include <vtkPolyData.h>
-#include <vtkCamera.h>
-#include <vtkRenderer.h>
+#include <vtkActor.h>
 #include <vtkRenderWindow.h>
+#include <vtkRenderer.h>
 #include <vtkRenderWindowInteractor.h>
-#include <vtkCamera.h>
-#include <vtkPolydataReader.h>
+#include <vtkProperty.h>
+#include <vtkTransformPolyDataFilter.h>
 #include <vtkVertexGlyphFilter.h>
+#include <vtkAxesActor.h>
 
-//测试文件：../data/fran_cut.vtk
-int main(int argc, char *argv[])
+int main(int, char *[])
 {
-    if(argc < 2)
-    {
-        std::cout<<argv[0]<<" *.vtk"<<std::endl;
-        return EXIT_FAILURE;
-    }
+    vtkSmartPointer<vtkPoints> sourcePoints =
+        vtkSmartPointer<vtkPoints>::New();
+    double sourcePoint1[3] = {0.5, 0.0, 0.0};
+    sourcePoints->InsertNextPoint(sourcePoint1);
+    double sourcePoint2[3] = {0.0, 0.5, 0.0};
+    sourcePoints->InsertNextPoint(sourcePoint2);
+    double sourcePoint3[3] = {0.0, 0.0, 0.5};
+    sourcePoints->InsertNextPoint(sourcePoint3);
 
-    vtkSmartPointer<vtkPolyDataReader> reader =
-        vtkSmartPointer<vtkPolyDataReader>::New();
-    reader->SetFileName(argv[1]);
-    reader->Update();
+    vtkSmartPointer<vtkPoints> targetPoints =
+        vtkSmartPointer<vtkPoints>::New();
+    double targetPoint1[3] = {0.0, 0.0, 0.55};
+    targetPoints->InsertNextPoint(targetPoint1);
+    double targetPoint2[3] = {0.0, 0.55, 0.0};
+    targetPoints->InsertNextPoint(targetPoint2);
+    double targetPoint3[3] = {-0.55, 0.0, 0.0};
+    targetPoints->InsertNextPoint(targetPoint3);
 
-    vtkSmartPointer<vtkPolyData> points =
+    vtkSmartPointer<vtkLandmarkTransform> landmarkTransform =
+        vtkSmartPointer<vtkLandmarkTransform>::New();
+    landmarkTransform->SetSourceLandmarks(sourcePoints);
+    landmarkTransform->SetTargetLandmarks(targetPoints);
+    landmarkTransform->SetModeToRigidBody();
+    landmarkTransform->Update();
+
+    vtkSmartPointer<vtkPolyData> source =
         vtkSmartPointer<vtkPolyData>::New();
-    points->SetPoints(reader->GetOutput()->GetPoints());
+    source->SetPoints(sourcePoints);
 
-    vtkSmartPointer<vtkSurfaceReconstructionFilter> surf =
-        vtkSmartPointer<vtkSurfaceReconstructionFilter>::New();
-    surf->SetInputData(points);
-    surf->SetNeighborhoodSize(20);
-    surf->SetSampleSpacing(0.005);
+    vtkSmartPointer<vtkPolyData> target =
+        vtkSmartPointer<vtkPolyData>::New();
+    target->SetPoints(targetPoints);
 
-    vtkSmartPointer<vtkContourFilter> contour =
-        vtkSmartPointer<vtkContourFilter>::New();
-    contour->SetInputConnection(surf->GetOutputPort());
-    contour->SetValue(0, 0.0);
-
-    double leftViewport[4] = {0.0, 0.0, 0.5, 1.0};
-    double rightViewport[4] = {0.5, 0.0, 1.0, 1.0};
-
-    vtkSmartPointer<vtkVertexGlyphFilter> vertexGlyphFilter =
+    vtkSmartPointer<vtkVertexGlyphFilter> sourceGlyphFilter =
         vtkSmartPointer<vtkVertexGlyphFilter>::New();
-    vertexGlyphFilter->AddInputData(points);
+    sourceGlyphFilter->SetInputData(source);
+    sourceGlyphFilter->Update();
 
-    vtkSmartPointer<vtkPolyDataMapper> vertexMapper =
+    vtkSmartPointer<vtkVertexGlyphFilter> targetGlyphFilter =
+        vtkSmartPointer<vtkVertexGlyphFilter>::New();
+    targetGlyphFilter->SetInputData(target);
+    targetGlyphFilter->Update();
+
+    vtkSmartPointer<vtkTransformPolyDataFilter> transformFilter =
+        vtkSmartPointer<vtkTransformPolyDataFilter>::New();
+    transformFilter->SetInputData(sourceGlyphFilter->GetOutput());
+    transformFilter->SetTransform(landmarkTransform);
+    transformFilter->Update();
+
+    vtkSmartPointer<vtkPolyDataMapper> sourceMapper =
         vtkSmartPointer<vtkPolyDataMapper>::New();
-    vertexMapper->SetInputData(vertexGlyphFilter->GetOutput());
-    vertexMapper->ScalarVisibilityOff();
+    sourceMapper->SetInputConnection(sourceGlyphFilter->GetOutputPort());
 
-    vtkSmartPointer<vtkActor> vertexActor =
+    vtkSmartPointer<vtkActor> sourceActor =
         vtkSmartPointer<vtkActor>::New();
-    vertexActor->SetMapper(vertexMapper);
-    vertexActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
+    sourceActor->SetMapper(sourceMapper);
+    sourceActor->GetProperty()->SetColor(1,1,0);
+    sourceActor->GetProperty()->SetPointSize(5);
 
-    vtkSmartPointer<vtkRenderer> vertexRenderer =
-        vtkSmartPointer<vtkRenderer>::New();
-    vertexRenderer->AddActor(vertexActor);
-    vertexRenderer->SetViewport(leftViewport);
-    vertexRenderer->SetBackground(1.0, 1.0, 1.0);
-
-    vtkSmartPointer<vtkPolyDataMapper> surfMapper =
+    vtkSmartPointer<vtkPolyDataMapper> targetMapper =
         vtkSmartPointer<vtkPolyDataMapper>::New();
-    surfMapper->SetInputData(contour->GetOutput());
-    surfMapper->ScalarVisibilityOff();
+    targetMapper->SetInputConnection(targetGlyphFilter->GetOutputPort());
 
-    vtkSmartPointer<vtkActor> surfActor =
+    vtkSmartPointer<vtkActor> targetActor =
         vtkSmartPointer<vtkActor>::New();
-    surfActor->SetMapper(surfMapper);
-    surfActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
+    targetActor->SetMapper(targetMapper);
+    targetActor->GetProperty()->SetColor(1,0,0);
+    targetActor->GetProperty()->SetPointSize(5);
 
-    vtkSmartPointer<vtkRenderer> surfRenderer =
+    vtkSmartPointer<vtkPolyDataMapper> solutionMapper =
+        vtkSmartPointer<vtkPolyDataMapper>::New();
+    solutionMapper->SetInputConnection(transformFilter->GetOutputPort());
+
+    vtkSmartPointer<vtkActor> solutionActor =
+        vtkSmartPointer<vtkActor>::New();
+    solutionActor->SetMapper(solutionMapper);
+    solutionActor->GetProperty()->SetColor(0,0,1);
+    solutionActor->GetProperty()->SetPointSize(5);
+
+    vtkSmartPointer<vtkRenderer> renderer =
         vtkSmartPointer<vtkRenderer>::New();
-    surfRenderer->AddActor(surfActor);
-    surfRenderer->SetViewport(rightViewport);
-    surfRenderer->SetBackground(1.0, 1.0, 1.0);
 
-    vtkSmartPointer<vtkRenderWindow> renWin =
+    vtkSmartPointer<vtkRenderWindow> renderWindow =
         vtkSmartPointer<vtkRenderWindow>::New();
-    renWin->AddRenderer(surfRenderer);
-    renWin->AddRenderer(vertexRenderer);
-    renWin->SetSize(800, 600);
-    renWin->Render();
-    renWin->SetWindowName("PolyDataSurfaceReconstruction");
+    renderWindow->AddRenderer(renderer);
+    renderer->AddActor(sourceActor);
+    renderer->AddActor(targetActor);
+    renderer->AddActor(solutionActor);
 
-    vtkSmartPointer<vtkRenderWindowInteractor> iren =
+    vtkSmartPointer<vtkAxesActor> axes =
+        vtkSmartPointer<vtkAxesActor>::New();
+    axes->SetScale(30);
+    renderer->AddActor(axes);
+    renderer->SetBackground(.3, .6, .3);
+
+    vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
         vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    iren->SetRenderWindow(renWin);
+    renderWindowInteractor->SetRenderWindow(renderWindow);
 
-    renWin->Render();
-    iren->Start();
+    renderWindow->SetSize(640, 480);
+    renderWindow->Render();
+    renderWindow->SetWindowName("PolyDataLandmarkReg");
+    renderWindow->Render();
+    renderWindowInteractor->Start();
 
     return EXIT_SUCCESS;
 }

@@ -1,6 +1,6 @@
 ﻿/**********************************************************************
 
-  文件名: 6.5_PolyDataConnectedCompExtract.cpp
+  文件名: 6.6_PolyDataDecimation.cpp
   Copyright (c) 张晓东, 罗火灵. All rights reserved.
   更多信息请访问:
     http://www.vtkchina.org (VTK中国)
@@ -8,64 +8,65 @@
 
 **********************************************************************/
 
-#include <vtkSmartPointer.h>
+#include <vtkPolyData.h>
 #include <vtkSphereSource.h>
-#include <vtkConeSource.h>
-#include <vtkPolyDataConnectivityFilter.h>
+#include <vtkDecimatePro.h>
+#include <vtkQuadricDecimation.h>
+#include <vtkQuadricClustering.h>
+#include <vtkSmartPointer.h>
 #include <vtkPolyDataMapper.h>
-#include <vtkActor.h>
 #include <vtkProperty.h>
-#include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
-#include <vtkAppendPolyData.h>
+#include <vtkRenderer.h>
+#include <vtkPolydataReader.h>
+#include <vtkCamera.h>
 
-int main(int, char *[])
+//测试文件：../data/fran_cut.vtk
+int main(int argc, char * argv[])
 {
-    vtkSmartPointer<vtkSphereSource> sphereSource =
-        vtkSmartPointer<vtkSphereSource>::New();
-    sphereSource->SetRadius(10);
-    sphereSource->SetThetaResolution(10);
-    sphereSource->SetPhiResolution(10);
-    sphereSource->Update();
+    if(argc < 2)
+    {
+        std::cout<<argv[0]<<" *.vtk"<<std::endl;
+        return EXIT_FAILURE;
+    }
 
-    vtkSmartPointer<vtkConeSource> coneSource =
-        vtkSmartPointer<vtkConeSource>::New();
-    coneSource->SetRadius(5);
-    coneSource->SetHeight(10);
-    coneSource->SetCenter(25,0,0);
-    coneSource->Update();
+    vtkSmartPointer<vtkPolyDataReader> reader =
+        vtkSmartPointer<vtkPolyDataReader>::New();
+    reader->SetFileName(argv[1]);
+    reader->Update();
+    vtkSmartPointer<vtkPolyData> original  =  reader->GetOutput();
 
-    vtkSmartPointer<vtkAppendPolyData> appendFilter =
-        vtkSmartPointer<vtkAppendPolyData>::New();
-    appendFilter->AddInputData(sphereSource->GetOutput());
-    appendFilter->AddInputData(coneSource->GetOutput());
-    appendFilter->Update();
+    std::cout << "抽取前：" << std::endl << "------------" << std::endl;
+    std::cout << "模型点数为： " << original->GetNumberOfPoints() << std::endl;
+    std::cout << "模型面数为： " << original->GetNumberOfPolys() << std::endl;
 
-    vtkSmartPointer<vtkPolyDataConnectivityFilter> connectivityFilter =
-        vtkSmartPointer<vtkPolyDataConnectivityFilter>::New();
-    connectivityFilter->SetInputData(appendFilter->GetOutput());
-    connectivityFilter->SetExtractionModeToCellSeededRegions();
-    connectivityFilter->AddSeed(100);
-    connectivityFilter->Update();
+    vtkSmartPointer<vtkDecimatePro> decimate =
+        vtkSmartPointer<vtkDecimatePro>::New();
+    decimate->SetInputData(original);
+    decimate->SetTargetReduction(.60);
+    decimate->Update();
 
-    vtkSmartPointer<vtkPolyDataMapper> originalMapper =
+    vtkSmartPointer<vtkPolyData> decimated = decimate->GetOutput();
+    std::cout << "抽取后" << std::endl << "------------" << std::endl;
+    std::cout << "模型点数为：" << decimated->GetNumberOfPoints()<< std::endl;
+    std::cout << "模型面数为：" << decimated->GetNumberOfPolys()<< std::endl;
+
+    vtkSmartPointer<vtkPolyDataMapper> origianlMapper =
         vtkSmartPointer<vtkPolyDataMapper>::New();
-    originalMapper->SetInputConnection(appendFilter->GetOutputPort());
-    originalMapper->Update();
+    origianlMapper->SetInputData(original);
 
-    vtkSmartPointer<vtkActor> originalActor =
+    vtkSmartPointer<vtkActor> origianlActor =
         vtkSmartPointer<vtkActor>::New();
-    originalActor->SetMapper(originalMapper);
+    origianlActor->SetMapper(origianlMapper);
 
-    vtkSmartPointer<vtkPolyDataMapper> extractedMapper =
+    vtkSmartPointer<vtkPolyDataMapper> decimatedMapper =
         vtkSmartPointer<vtkPolyDataMapper>::New();
-    extractedMapper->SetInputConnection(connectivityFilter->GetOutputPort());
-    extractedMapper->Update();
+    decimatedMapper->SetInputData(decimated);
 
-    vtkSmartPointer<vtkActor> extractedActor =
+    vtkSmartPointer<vtkActor> decimatedActor =
         vtkSmartPointer<vtkActor>::New();
-    extractedActor->SetMapper(extractedMapper);
+    decimatedActor->SetMapper(decimatedMapper);
 
     double leftViewport[4] = {0.0, 0.0, 0.5, 1.0};
     double rightViewport[4] = {0.5, 0.0, 1.0, 1.0};
@@ -73,14 +74,22 @@ int main(int, char *[])
     vtkSmartPointer<vtkRenderer> leftRenderer =
         vtkSmartPointer<vtkRenderer>::New();
     leftRenderer->SetViewport(leftViewport);
-    leftRenderer->AddActor(originalActor);
-    leftRenderer->SetBackground(0.8, 0.8, 0.8);
+    leftRenderer->AddActor(origianlActor);
+    leftRenderer->SetBackground(1.0, 1.0, 1.0);
 
     vtkSmartPointer<vtkRenderer> rightRenderer =
         vtkSmartPointer<vtkRenderer>::New();
     rightRenderer->SetViewport(rightViewport);
-    rightRenderer->AddActor(extractedActor);
+    rightRenderer->AddActor(decimatedActor);
     rightRenderer->SetBackground(1.0, 1.0, 1.0);
+
+    leftRenderer->GetActiveCamera()->SetPosition(0, -1, 0);
+    leftRenderer->GetActiveCamera()->SetFocalPoint(0, 0, 0);
+    leftRenderer->GetActiveCamera()->SetViewUp(0, 0, 1);
+    leftRenderer->GetActiveCamera()->Azimuth(30);
+    leftRenderer->GetActiveCamera()->Elevation(30);
+    leftRenderer->ResetCamera();
+    rightRenderer->SetActiveCamera(leftRenderer->GetActiveCamera());
 
     vtkSmartPointer<vtkRenderWindow> renderWindow =
         vtkSmartPointer<vtkRenderWindow>::New();
@@ -88,15 +97,13 @@ int main(int, char *[])
     renderWindow->AddRenderer(rightRenderer);
     renderWindow->SetSize(640, 320);
     renderWindow->Render();
-    renderWindow->SetWindowName("PolyDataConnectedCompExtract");
-
-    leftRenderer->ResetCamera();
-    rightRenderer->SetActiveCamera(leftRenderer->GetActiveCamera());
+    renderWindow->SetWindowName("PolyDataDecimation");
 
     vtkSmartPointer<vtkRenderWindowInteractor> interactor =
         vtkSmartPointer<vtkRenderWindowInteractor>::New();
     interactor->SetRenderWindow(renderWindow);
-    interactor->Initialize();
+
+    renderWindow->Render();
     interactor->Start();
 
     return EXIT_SUCCESS;

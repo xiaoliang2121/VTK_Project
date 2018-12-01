@@ -1,72 +1,91 @@
 ﻿/**********************************************************************
 
-  文件名: 2.1_RenderCylinder.cpp
+  文件名: 6.7_PolyDataDelaunay2D.cpp
   Copyright (c) 张晓东, 罗火灵. All rights reserved.
-  更多信息请访问: 
+  更多信息请访问:
     http://www.vtkchina.org (VTK中国)
-	http://blog.csdn.net/www_doling_net (东灵工作室) 
+    http://blog.csdn.net/www_doling_net (东灵工作室)
 
 **********************************************************************/
 
 #include <vtkSmartPointer.h>
+#include <vtkProperty.h>
+#include <vtkPoints.h>
+#include <vtkPolyData.h>
+#include <vtkPointData.h>
+#include <vtkDelaunay2D.h>
+#include <vtkMath.h>
+#include <vtkPolyDataMapper.h>
+#include <vtkActor.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindowInteractor.h>
+#include <vtkVertexGlyphFilter.h>
 
-#include <vtkImageData.h>
-#include <vtkImageCanvasSource2D.h>
-#include <vtkInteractorStyleImage.h>
-#include <vtkImageActor.h>
-
-int main(int argc, char* argv[])
+int main(int, char *[])
 {
-//    if(argc < 2)
-//    {
-//        std::cout<<argv[0]<<" "<<"TextureFile(*.jpg)"<<std::endl;
-//        return EXIT_FAILURE;
-//    }
+    unsigned int gridSize = 10;
+    vtkSmartPointer<vtkPoints> points =
+        vtkSmartPointer<vtkPoints>::New();
+    for(unsigned int x = 0; x < gridSize; x++)
+    {
+        for(unsigned int y = 0; y < gridSize; y++)
+        {
+            points->InsertNextPoint(x, y, vtkMath::Random(0.0, 3.0));
+        }
+    }
 
-    vtkSmartPointer<vtkImageCanvasSource2D> canvas =
-            vtkSmartPointer<vtkImageCanvasSource2D>::New();
-    canvas->SetScalarTypeToUnsignedChar();
-    canvas->SetNumberOfScalarComponents(1);
-    canvas->SetExtent(0,100,0,100,0,0);
-    canvas->SetDrawColor(0,0,0,0);
-    canvas->FillBox(0,100,0,100);
-    canvas->SetDrawColor(255,0,0,0);
-    canvas->FillBox(20,40,20,40);
-    canvas->Update();
+    vtkSmartPointer<vtkPolyData> polydata =
+        vtkSmartPointer<vtkPolyData>::New();
+    polydata->SetPoints(points);
 
-    vtkSmartPointer<vtkImageActor> redActor =
-            vtkSmartPointer<vtkImageActor>::New();
-    redActor->SetInputData(canvas->GetOutput());
+    vtkSmartPointer<vtkDelaunay2D> delaunay =
+        vtkSmartPointer<vtkDelaunay2D>::New();
+    delaunay->SetInputData(polydata);
+    delaunay->Update();
 
-    double redViewport[4] = {0.0, 0.0, 1.0, 1.0};
-    vtkSmartPointer<vtkRenderer> redRenderer =
-            vtkSmartPointer<vtkRenderer>::New();
-    redRenderer->SetViewport(redViewport);
-    redRenderer->AddActor(redActor);
-    redRenderer->ResetCamera();
-    redRenderer->SetBackground(1.0,1.0,1.0);
+    vtkSmartPointer<vtkVertexGlyphFilter> glyphFilter =
+        vtkSmartPointer<vtkVertexGlyphFilter>::New();
+    glyphFilter->SetInputData(polydata);
+    glyphFilter->Update();
 
-    // Setup render window
+    vtkSmartPointer<vtkPolyDataMapper> pointsMapper =
+        vtkSmartPointer<vtkPolyDataMapper>::New();
+    pointsMapper->SetInputData(glyphFilter->GetOutput());
+
+    vtkSmartPointer<vtkActor> pointsActor =
+        vtkSmartPointer<vtkActor>::New();
+    pointsActor->SetMapper(pointsMapper);
+    pointsActor->GetProperty()->SetPointSize(3);
+    pointsActor->GetProperty()->SetColor(1,0,0);
+
+    vtkSmartPointer<vtkPolyDataMapper> triangulatedMapper =
+        vtkSmartPointer<vtkPolyDataMapper>::New();
+    triangulatedMapper->SetInputData(delaunay->GetOutput());
+
+    vtkSmartPointer<vtkActor> triangulatedActor =
+        vtkSmartPointer<vtkActor>::New();
+    triangulatedActor->SetMapper(triangulatedMapper);
+
+    vtkSmartPointer<vtkRenderer> renderer =
+        vtkSmartPointer<vtkRenderer>::New();
+    renderer->AddActor(pointsActor);
+    renderer->AddActor(triangulatedActor);
+    renderer->SetBackground(1.0, 1.0, 1.0);
+
     vtkSmartPointer<vtkRenderWindow> renderWindow =
         vtkSmartPointer<vtkRenderWindow>::New();
-    renderWindow->AddRenderer(redRenderer);
-    renderWindow->SetSize( 800, 600 );
-    renderWindow->Render();
-    renderWindow->SetWindowName("ImageCanvasSource2D");
+    renderWindow->AddRenderer(renderer);
 
-    // Setup render window interactor
     vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
         vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    vtkSmartPointer<vtkInteractorStyleImage> style =
-        vtkSmartPointer<vtkInteractorStyleImage>::New();
-
-    renderWindowInteractor->SetInteractorStyle(style);
-    // Render and start interaction
     renderWindowInteractor->SetRenderWindow(renderWindow);
-    renderWindowInteractor->Initialize();
+
+    renderWindow->SetSize(640, 320);
+    renderWindow->Render();
+    renderWindow->SetWindowName("PolyDataDelaunay2D");
+    renderWindow->Render();
+
     renderWindowInteractor->Start();
 
     return EXIT_SUCCESS;

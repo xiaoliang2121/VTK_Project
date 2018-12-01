@@ -1,6 +1,6 @@
 ﻿/**********************************************************************
 
-  文件名: 6.4_PolyDataClosed.cpp
+  文件名: 6.5_PolyDataConnectedAllCompExtract.cpp
   Copyright (c) 张晓东, 罗火灵. All rights reserved.
   更多信息请访问:
     http://www.vtkchina.org (VTK中国)
@@ -9,176 +9,118 @@
 **********************************************************************/
 
 #include <vtkSmartPointer.h>
-#include <vtkInformation.h>
-#include <vtkUnstructuredGrid.h>
-#include <vtkPolyData.h>
-#include <vtkPolyDataNormals.h>
-#include <vtkPointData.h>
-#include <vtkXMLPolyDataReader.h>
-#include <vtkRenderWindow.h>
-#include <vtkRenderWindowInteractor.h>
-#include <vtkRenderer.h>
-#include <vtkSelection.h>
-#include <vtkSelectionNode.h>
 #include <vtkSphereSource.h>
+#include <vtkConeSource.h>
+#include <vtkPolyDataConnectivityFilter.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkActor.h>
-#include <vtkCamera.h>
 #include <vtkProperty.h>
-#include <vtkIdTypeArray.h>
-#include <vtkExtractSelection.h>
-#include <vtkDataSetSurfaceFilter.h>
-#include <vtkFeatureEdges.h>
-#include <vtkFillHolesFilter.h>
+#include <vtkRenderer.h>
+#include <vtkRenderWindow.h>
+#include <vtkRenderWindowInteractor.h>
+#include <vtkAppendPolyData.h>
+#include <vtkPolyDataWriter.h>
+#include <vtkConnectivityFilter.h>
 
-void GenerateData(vtkSmartPointer<vtkPolyData> input)
+int main(int, char *[])
 {
     vtkSmartPointer<vtkSphereSource> sphereSource =
         vtkSmartPointer<vtkSphereSource>::New();
+    sphereSource->SetRadius(10);
+    sphereSource->SetThetaResolution(10);
+    sphereSource->SetPhiResolution(10);
     sphereSource->Update();
 
-    vtkSmartPointer<vtkIdTypeArray> ids =
-        vtkSmartPointer<vtkIdTypeArray>::New();
-    ids->SetNumberOfComponents(1);
-    ids->InsertNextValue(2);
-    ids->InsertNextValue(10);
+    vtkSmartPointer<vtkConeSource> coneSource =
+        vtkSmartPointer<vtkConeSource>::New();
+    coneSource->SetRadius(5);
+    coneSource->SetHeight(10);
+    coneSource->SetCenter(25,0,0);
+    coneSource->Update();
 
-    vtkSmartPointer<vtkSelectionNode> selectionNode =
-        vtkSmartPointer<vtkSelectionNode>::New();
-    selectionNode->SetFieldType(vtkSelectionNode::CELL);
-    selectionNode->SetContentType(vtkSelectionNode::INDICES);
-    selectionNode->SetSelectionList(ids);
-    selectionNode->GetProperties()->Set(vtkSelectionNode::INVERSE(), 1);
+    vtkSmartPointer<vtkAppendPolyData> appendFilter =
+        vtkSmartPointer<vtkAppendPolyData>::New();
+    appendFilter->AddInputData(sphereSource->GetOutput());
+    appendFilter->AddInputData(coneSource->GetOutput());
+    appendFilter->Update();
 
-    vtkSmartPointer<vtkSelection> selection =
-        vtkSmartPointer<vtkSelection>::New();
-    selection->AddNode(selectionNode);
+    vtkSmartPointer<vtkPolyDataConnectivityFilter> connectivityFilter =
+        vtkSmartPointer<vtkPolyDataConnectivityFilter>::New();
+    connectivityFilter->SetInputData(appendFilter->GetOutput());
+    connectivityFilter->SetExtractionModeToAllRegions();
+//    connectivityFilter->SetExtractionModeToLargestRegion();
+    connectivityFilter->Update();
 
-    vtkSmartPointer<vtkExtractSelection> extractSelection =
-        vtkSmartPointer<vtkExtractSelection>::New();
-    extractSelection->SetInputData(0, sphereSource->GetOutput());
-    extractSelection->SetInputData(1, selection);
-    extractSelection->Update();
-
-    vtkSmartPointer<vtkDataSetSurfaceFilter> surfaceFilter =
-        vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
-    surfaceFilter->SetInputConnection(extractSelection->GetOutputPort());
-    surfaceFilter->Update();
-
-    input->ShallowCopy(surfaceFilter->GetOutput());
-}
-
-int main(int argc, char *argv[])
-{
-    vtkSmartPointer<vtkPolyData> input =
-        vtkSmartPointer<vtkPolyData>::New();
-    GenerateData(input);
-
-    vtkSmartPointer<vtkFeatureEdges> featureEdges =
-        vtkSmartPointer<vtkFeatureEdges>::New();
-    featureEdges->SetInputData(input);
-    featureEdges->BoundaryEdgesOn();
-    featureEdges->FeatureEdgesOff();
-    featureEdges->ManifoldEdgesOff();
-    featureEdges->NonManifoldEdgesOff();
-    featureEdges->Update();
-
-    int numberOfOpenEdges = featureEdges->GetOutput()->GetNumberOfCells();
-    if(numberOfOpenEdges)
+    int regionNum = connectivityFilter->GetNumberOfExtractedRegions();
+    for (int i=0; i<regionNum; i++)
     {
-        std::cout<<"该网格模型不是封闭的..."<<std::endl;
+        vtkSmartPointer<vtkPolyDataConnectivityFilter> connectivityFilter2 =
+            vtkSmartPointer<vtkPolyDataConnectivityFilter>::New();
+        connectivityFilter2->SetInputData(appendFilter->GetOutput());
+        connectivityFilter2->InitializeSpecifiedRegionList();
+        connectivityFilter2->SetExtractionModeToSpecifiedRegions();
+        connectivityFilter2->AddSpecifiedRegion(i);
+        connectivityFilter2->Update();
+
+        char str[256];
+        itoa(i, str, 10);
+        strcat(str, ".vtk");
+
+        vtkSmartPointer<vtkPolyDataWriter> writer =
+            vtkSmartPointer<vtkPolyDataWriter>::New();
+        writer->SetFileName(str);
+        writer->SetInputData(connectivityFilter2->GetOutput());
+        writer->Update();
     }
-    else
-    {
-        std::cout<<"该网格模型是封闭的..."<<std::endl;
-        return EXIT_SUCCESS;
-    }
-
-    vtkSmartPointer<vtkFillHolesFilter> fillHolesFilter =
-        vtkSmartPointer<vtkFillHolesFilter>::New();
-    fillHolesFilter->SetInputData(input);
-    fillHolesFilter->Update();
-
-    vtkSmartPointer<vtkPolyDataNormals> normals =
-        vtkSmartPointer<vtkPolyDataNormals>::New();
-    normals->SetInputConnection(fillHolesFilter->GetOutputPort());
-    normals->ConsistencyOn();
-    normals->SplittingOff();
-    normals->Update();
-
-    //////////////////////////////////////////////////////////////////////////
-    double leftViewport[4] = {0.0, 0.0, 0.5, 1.0};
-    double rightViewport[4] = {0.5, 0.0, 1.0, 1.0};
 
     vtkSmartPointer<vtkPolyDataMapper> originalMapper =
         vtkSmartPointer<vtkPolyDataMapper>::New();
-    originalMapper->SetInputData(input);
-
-    vtkSmartPointer<vtkProperty> backfaceProp =
-        vtkSmartPointer<vtkProperty>::New();
-    backfaceProp->SetDiffuseColor(0.89,0.81,0.34);
+    originalMapper->SetInputData(appendFilter->GetOutput());
 
     vtkSmartPointer<vtkActor> originalActor =
         vtkSmartPointer<vtkActor>::New();
     originalActor->SetMapper(originalMapper);
-    originalActor->SetBackfaceProperty(backfaceProp);
-    originalActor->GetProperty()->SetDiffuseColor(1.0, 0.3882, 0.2784);
 
-    vtkSmartPointer<vtkPolyDataMapper> edgeMapper =
+    vtkSmartPointer<vtkPolyDataMapper> extractedMapper =
         vtkSmartPointer<vtkPolyDataMapper>::New();
-    edgeMapper->SetInputData(featureEdges->GetOutput());
-    vtkSmartPointer<vtkActor> edgeActor =
-        vtkSmartPointer<vtkActor>::New();
-    edgeActor->SetMapper(edgeMapper);
-    edgeActor->GetProperty()->SetEdgeColor(0.,0.,1.0);
-    edgeActor->GetProperty()->SetEdgeVisibility(1);
-    edgeActor->GetProperty()->SetLineWidth(5);
+    extractedMapper->SetInputData(connectivityFilter->GetOutput());
 
-    vtkSmartPointer<vtkPolyDataMapper> filledMapper =
-        vtkSmartPointer<vtkPolyDataMapper>::New();
-    filledMapper->SetInputData(normals->GetOutput());
-
-    vtkSmartPointer<vtkActor> filledActor =
+    vtkSmartPointer<vtkActor> extractedActor =
         vtkSmartPointer<vtkActor>::New();
-    filledActor->SetMapper(filledMapper);
-    filledActor->GetProperty()->SetDiffuseColor(1.0, 0.3882, 0.2784);
+    extractedActor->SetMapper(extractedMapper);
+
+    double leftViewport[4] = {0.0, 0.0, 0.5, 1.0};
+    double rightViewport[4] = {0.5, 0.0, 1.0, 1.0};
 
     vtkSmartPointer<vtkRenderer> leftRenderer =
         vtkSmartPointer<vtkRenderer>::New();
     leftRenderer->SetViewport(leftViewport);
     leftRenderer->AddActor(originalActor);
-    leftRenderer->AddActor(edgeActor);
+    leftRenderer->SetBackground(0.2,0.1,0.5);
     leftRenderer->SetBackground(1.0, 1.0, 1.0);
 
     vtkSmartPointer<vtkRenderer> rightRenderer =
         vtkSmartPointer<vtkRenderer>::New();
     rightRenderer->SetViewport(rightViewport);
-    rightRenderer->AddActor(filledActor);
+    rightRenderer->AddActor(extractedActor);
     rightRenderer->SetBackground(1.0, 1.0, 1.0);
 
     vtkSmartPointer<vtkRenderWindow> renderWindow =
         vtkSmartPointer<vtkRenderWindow>::New();
     renderWindow->AddRenderer(leftRenderer);
     renderWindow->AddRenderer(rightRenderer);
-    renderWindow->SetSize(800, 600);
+    renderWindow->SetSize(640, 320);
     renderWindow->Render();
-    renderWindow->SetWindowName("PolyDataClosed");
+    renderWindow->SetWindowName("6.5_PolyDataConnectedAllCompExtract");
 
-    vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
-        vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    renderWindowInteractor->SetRenderWindow(renderWindow);
-
-    leftRenderer->GetActiveCamera()->SetPosition(0, -1, 0);
-    leftRenderer->GetActiveCamera()->SetFocalPoint(0, 0, 0);
-    leftRenderer->GetActiveCamera()->SetViewUp(0, 0, 1);
-    leftRenderer->GetActiveCamera()->Azimuth(30);
-    leftRenderer->GetActiveCamera()->Elevation(30);
     leftRenderer->ResetCamera();
     rightRenderer->SetActiveCamera(leftRenderer->GetActiveCamera());
 
-    renderWindow->Render();
-    renderWindowInteractor->Start();
+    vtkSmartPointer<vtkRenderWindowInteractor> interactor =
+        vtkSmartPointer<vtkRenderWindowInteractor>::New();
+    interactor->SetRenderWindow(renderWindow);
+    interactor->Initialize();
+    interactor->Start();
 
     return EXIT_SUCCESS;
 }
-

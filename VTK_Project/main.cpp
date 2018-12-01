@@ -1,6 +1,6 @@
 ﻿/**********************************************************************
 
-  文件名: 6.5_PolyDataConnectedAllCompExtract.cpp
+  文件名: 6.5_PolyDataConnectedCompExtract.cpp
   Copyright (c) 张晓东, 罗火灵. All rights reserved.
   更多信息请访问:
     http://www.vtkchina.org (VTK中国)
@@ -19,8 +19,6 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkAppendPolyData.h>
-#include <vtkPolyDataWriter.h>
-#include <vtkConnectivityFilter.h>
 
 int main(int, char *[])
 {
@@ -47,35 +45,14 @@ int main(int, char *[])
     vtkSmartPointer<vtkPolyDataConnectivityFilter> connectivityFilter =
         vtkSmartPointer<vtkPolyDataConnectivityFilter>::New();
     connectivityFilter->SetInputData(appendFilter->GetOutput());
-    connectivityFilter->SetExtractionModeToAllRegions();
-//    connectivityFilter->SetExtractionModeToLargestRegion();
+    connectivityFilter->SetExtractionModeToCellSeededRegions();
+    connectivityFilter->AddSeed(100);
     connectivityFilter->Update();
-
-    int regionNum = connectivityFilter->GetNumberOfExtractedRegions();
-    for (int i=0; i<regionNum; i++)
-    {
-        vtkSmartPointer<vtkPolyDataConnectivityFilter> connectivityFilter2 =
-            vtkSmartPointer<vtkPolyDataConnectivityFilter>::New();
-        connectivityFilter2->SetInputData(appendFilter->GetOutput());
-        connectivityFilter2->InitializeSpecifiedRegionList();
-        connectivityFilter2->SetExtractionModeToSpecifiedRegions();
-        connectivityFilter2->AddSpecifiedRegion(i);
-        connectivityFilter2->Update();
-
-        char str[256];
-        itoa(i, str, 10);
-        strcat(str, ".vtk");
-
-        vtkSmartPointer<vtkPolyDataWriter> writer =
-            vtkSmartPointer<vtkPolyDataWriter>::New();
-        writer->SetFileName(str);
-        writer->SetInputData(connectivityFilter2->GetOutput());
-        writer->Update();
-    }
 
     vtkSmartPointer<vtkPolyDataMapper> originalMapper =
         vtkSmartPointer<vtkPolyDataMapper>::New();
-    originalMapper->SetInputData(appendFilter->GetOutput());
+    originalMapper->SetInputConnection(appendFilter->GetOutputPort());
+    originalMapper->Update();
 
     vtkSmartPointer<vtkActor> originalActor =
         vtkSmartPointer<vtkActor>::New();
@@ -83,7 +60,8 @@ int main(int, char *[])
 
     vtkSmartPointer<vtkPolyDataMapper> extractedMapper =
         vtkSmartPointer<vtkPolyDataMapper>::New();
-    extractedMapper->SetInputData(connectivityFilter->GetOutput());
+    extractedMapper->SetInputConnection(connectivityFilter->GetOutputPort());
+    extractedMapper->Update();
 
     vtkSmartPointer<vtkActor> extractedActor =
         vtkSmartPointer<vtkActor>::New();
@@ -96,8 +74,7 @@ int main(int, char *[])
         vtkSmartPointer<vtkRenderer>::New();
     leftRenderer->SetViewport(leftViewport);
     leftRenderer->AddActor(originalActor);
-    leftRenderer->SetBackground(0.2,0.1,0.5);
-    leftRenderer->SetBackground(1.0, 1.0, 1.0);
+    leftRenderer->SetBackground(0.8, 0.8, 0.8);
 
     vtkSmartPointer<vtkRenderer> rightRenderer =
         vtkSmartPointer<vtkRenderer>::New();
@@ -111,7 +88,7 @@ int main(int, char *[])
     renderWindow->AddRenderer(rightRenderer);
     renderWindow->SetSize(640, 320);
     renderWindow->Render();
-    renderWindow->SetWindowName("6.5_PolyDataConnectedAllCompExtract");
+    renderWindow->SetWindowName("PolyDataConnectedCompExtract");
 
     leftRenderer->ResetCamera();
     rightRenderer->SetActiveCamera(leftRenderer->GetActiveCamera());

@@ -1,6 +1,6 @@
 ﻿/**********************************************************************
 
-  文件名: 6.7_PolyDataConstrainedDelaunay2D.cpp
+  文件名: 6.7_PolyDataSurfaceReconstruction.cpp
   Copyright (c) 张晓东, 罗火灵. All rights reserved.
   更多信息请访问:
     http://www.vtkchina.org (VTK中国)
@@ -9,120 +9,103 @@
 **********************************************************************/
 
 #include <vtkSmartPointer.h>
-#include <vtkProperty.h>
-#include <vtkPolygon.h>
-#include <vtkCellArray.h>
-#include <vtkPoints.h>
-#include <vtkPolyData.h>
-#include <vtkPointData.h>
-#include <vtkDelaunay2D.h>
-#include <vtkMath.h>
+#include <vtkSurfaceReconstructionFilter.h>
+#include <vtkProgrammableSource.h>
+#include <vtkContourFilter.h>
+#include <vtkReverseSense.h>
 #include <vtkPolyDataMapper.h>
-#include <vtkActor.h>
-#include <vtkRenderWindow.h>
+#include <vtkProperty.h>
+#include <vtkPolyData.h>
+#include <vtkCamera.h>
 #include <vtkRenderer.h>
+#include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
+#include <vtkCamera.h>
+#include <vtkPolydataReader.h>
 #include <vtkVertexGlyphFilter.h>
 
-int main(int, char *[])
+//测试文件：../data/fran_cut.vtk
+int main(int argc, char *argv[])
 {
-    vtkSmartPointer<vtkPoints> points =
-        vtkSmartPointer<vtkPoints>::New();
-
-    unsigned int gridSize = 10;
-    for(unsigned int x = 0; x < gridSize; x++)
+    if(argc < 2)
     {
-        for(unsigned int y = 0; y < gridSize; y++)
-        {
-            points->InsertNextPoint(x, y, vtkMath::Random(0.0, 3.0));
-        }
+        std::cout<<argv[0]<<" *.vtk"<<std::endl;
+        return EXIT_FAILURE;
     }
 
-    vtkSmartPointer<vtkPolyData> polydata =
+    vtkSmartPointer<vtkPolyDataReader> reader =
+        vtkSmartPointer<vtkPolyDataReader>::New();
+    reader->SetFileName(argv[1]);
+    reader->Update();
+
+    vtkSmartPointer<vtkPolyData> points =
         vtkSmartPointer<vtkPolyData>::New();
-    polydata->SetPoints(points);
+    points->SetPoints(reader->GetOutput()->GetPoints());
 
-    vtkSmartPointer<vtkPolygon> poly =
-        vtkSmartPointer<vtkPolygon>::New();
-    /*poly->GetPointIds()->InsertNextId(22);
-    poly->GetPointIds()->InsertNextId(23);
-    poly->GetPointIds()->InsertNextId(24);
-    poly->GetPointIds()->InsertNextId(25);
-    poly->GetPointIds()->InsertNextId(35);
-    poly->GetPointIds()->InsertNextId(45);
-    poly->GetPointIds()->InsertNextId(44);
-    poly->GetPointIds()->InsertNextId(43);
-    poly->GetPointIds()->InsertNextId(42);
-    poly->GetPointIds()->InsertNextId(32);*/
+    vtkSmartPointer<vtkSurfaceReconstructionFilter> surf =
+        vtkSmartPointer<vtkSurfaceReconstructionFilter>::New();
+    surf->SetInputData(points);
+    surf->SetNeighborhoodSize(20);
+    surf->SetSampleSpacing(0.005);
 
-    poly->GetPointIds()->InsertNextId(32);
-    poly->GetPointIds()->InsertNextId(42);
-    poly->GetPointIds()->InsertNextId(43);
-    poly->GetPointIds()->InsertNextId(44);
-    poly->GetPointIds()->InsertNextId(45);
-    poly->GetPointIds()->InsertNextId(35);
-    poly->GetPointIds()->InsertNextId(25);
-    poly->GetPointIds()->InsertNextId(24);
-    poly->GetPointIds()->InsertNextId(23);
-    poly->GetPointIds()->InsertNextId(22);
+    vtkSmartPointer<vtkContourFilter> contour =
+        vtkSmartPointer<vtkContourFilter>::New();
+    contour->SetInputConnection(surf->GetOutputPort());
+    contour->SetValue(0, 0.0);
 
-    vtkSmartPointer<vtkCellArray> cell =
-        vtkSmartPointer<vtkCellArray>::New();
-    cell->InsertNextCell(poly);
+    double leftViewport[4] = {0.0, 0.0, 0.5, 1.0};
+    double rightViewport[4] = {0.5, 0.0, 1.0, 1.0};
 
-    vtkSmartPointer<vtkPolyData> boundary =
-        vtkSmartPointer<vtkPolyData>::New();
-    boundary->SetPoints(points);
-    boundary->SetPolys(cell);
-
-    vtkSmartPointer<vtkDelaunay2D> delaunay =
-        vtkSmartPointer<vtkDelaunay2D>::New();
-    delaunay->SetInputData(polydata);
-    delaunay->SetSourceData(boundary);
-    delaunay->Update();
-
-    vtkSmartPointer<vtkVertexGlyphFilter> glyphFilter =
+    vtkSmartPointer<vtkVertexGlyphFilter> vertexGlyphFilter =
         vtkSmartPointer<vtkVertexGlyphFilter>::New();
-    glyphFilter->SetInputData(polydata);
-    glyphFilter->Update();
+    vertexGlyphFilter->AddInputData(points);
 
-    vtkSmartPointer<vtkPolyDataMapper> pointsMapper =
+    vtkSmartPointer<vtkPolyDataMapper> vertexMapper =
         vtkSmartPointer<vtkPolyDataMapper>::New();
-    pointsMapper->SetInputData(glyphFilter->GetOutput());
+    vertexMapper->SetInputData(vertexGlyphFilter->GetOutput());
+    vertexMapper->ScalarVisibilityOff();
 
-    vtkSmartPointer<vtkActor> pointsActor =
+    vtkSmartPointer<vtkActor> vertexActor =
         vtkSmartPointer<vtkActor>::New();
-    pointsActor->SetMapper(pointsMapper);
-    pointsActor->GetProperty()->SetPointSize(3);
-    pointsActor->GetProperty()->SetColor(1,0,0);
+    vertexActor->SetMapper(vertexMapper);
+    vertexActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
 
-    vtkSmartPointer<vtkPolyDataMapper> triangulatedMapper =
-        vtkSmartPointer<vtkPolyDataMapper>::New();
-    triangulatedMapper->SetInputData(delaunay->GetOutput());
-
-    vtkSmartPointer<vtkActor> triangulatedActor =
-        vtkSmartPointer<vtkActor>::New();
-    triangulatedActor->SetMapper(triangulatedMapper);
-
-    vtkSmartPointer<vtkRenderer> renderer =
+    vtkSmartPointer<vtkRenderer> vertexRenderer =
         vtkSmartPointer<vtkRenderer>::New();
-    renderer->AddActor(pointsActor);
-    renderer->AddActor(triangulatedActor);
-    renderer->SetBackground(1.0, 1.0, 1.0);
+    vertexRenderer->AddActor(vertexActor);
+    vertexRenderer->SetViewport(leftViewport);
+    vertexRenderer->SetBackground(1.0, 1.0, 1.0);
 
-    vtkSmartPointer<vtkRenderWindow> renderWindow =
+    vtkSmartPointer<vtkPolyDataMapper> surfMapper =
+        vtkSmartPointer<vtkPolyDataMapper>::New();
+    surfMapper->SetInputData(contour->GetOutput());
+    surfMapper->ScalarVisibilityOff();
+
+    vtkSmartPointer<vtkActor> surfActor =
+        vtkSmartPointer<vtkActor>::New();
+    surfActor->SetMapper(surfMapper);
+    surfActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
+
+    vtkSmartPointer<vtkRenderer> surfRenderer =
+        vtkSmartPointer<vtkRenderer>::New();
+    surfRenderer->AddActor(surfActor);
+    surfRenderer->SetViewport(rightViewport);
+    surfRenderer->SetBackground(1.0, 1.0, 1.0);
+
+    vtkSmartPointer<vtkRenderWindow> renWin =
         vtkSmartPointer<vtkRenderWindow>::New();
-    renderWindow->AddRenderer(renderer);
+    renWin->AddRenderer(surfRenderer);
+    renWin->AddRenderer(vertexRenderer);
+    renWin->SetSize(800, 600);
+    renWin->Render();
+    renWin->SetWindowName("PolyDataSurfaceReconstruction");
 
-    vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
+    vtkSmartPointer<vtkRenderWindowInteractor> iren =
         vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    renderWindowInteractor->SetRenderWindow(renderWindow);
+    iren->SetRenderWindow(renWin);
 
-    renderWindow->SetSize(640, 480);
-    renderWindow->Render();
-    renderWindow->SetWindowName("PolyDataConstrainedDelaunay2D");
-    renderWindow->Render();
-    renderWindowInteractor->Start();
+    renWin->Render();
+    iren->Start();
 
     return EXIT_SUCCESS;
 }

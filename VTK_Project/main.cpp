@@ -1,6 +1,6 @@
 ﻿/**********************************************************************
 
-  文件名: 6.8_PolyDataLandmarkReg.cpp
+  文件名: 6.8_PolyDataICP.cpp
   Copyright (c) 张晓东, 罗火灵. All rights reserved.
   更多信息请访问:
     http://www.vtkchina.org (VTK中国)
@@ -20,42 +20,43 @@
 #include <vtkProperty.h>
 #include <vtkTransformPolyDataFilter.h>
 #include <vtkVertexGlyphFilter.h>
-#include <vtkAxesActor.h>
+#include <vtkIterativeClosestPointTransform.h>
+#include <vtkPolyDataReader.h>
+#include <vtkTransform.h>
 
-int main(int, char *[])
+//测试文件：../data/fran_cut.vtk
+int main(int argc, char * argv[])
 {
-    vtkSmartPointer<vtkPoints> sourcePoints =
-        vtkSmartPointer<vtkPoints>::New();
-    double sourcePoint1[3] = {0.5, 0.0, 0.0};
-    sourcePoints->InsertNextPoint(sourcePoint1);
-    double sourcePoint2[3] = {0.0, 0.5, 0.0};
-    sourcePoints->InsertNextPoint(sourcePoint2);
-    double sourcePoint3[3] = {0.0, 0.0, 0.5};
-    sourcePoints->InsertNextPoint(sourcePoint3);
+    if(argc < 2)
+    {
+        std::cout<<argv[0]<<" *.vtk"<<std::endl;
+        return EXIT_FAILURE;
+    }
 
-    vtkSmartPointer<vtkPoints> targetPoints =
-        vtkSmartPointer<vtkPoints>::New();
-    double targetPoint1[3] = {0.0, 0.0, 0.55};
-    targetPoints->InsertNextPoint(targetPoint1);
-    double targetPoint2[3] = {0.0, 0.55, 0.0};
-    targetPoints->InsertNextPoint(targetPoint2);
-    double targetPoint3[3] = {-0.55, 0.0, 0.0};
-    targetPoints->InsertNextPoint(targetPoint3);
+    vtkSmartPointer<vtkPolyDataReader> reader =
+        vtkSmartPointer<vtkPolyDataReader>::New();
+    reader->SetFileName(argv[1]);
+    reader->Update();
+    vtkSmartPointer<vtkPolyData> original  =  reader->GetOutput();
 
-    vtkSmartPointer<vtkLandmarkTransform> landmarkTransform =
-        vtkSmartPointer<vtkLandmarkTransform>::New();
-    landmarkTransform->SetSourceLandmarks(sourcePoints);
-    landmarkTransform->SetTargetLandmarks(targetPoints);
-    landmarkTransform->SetModeToRigidBody();
-    landmarkTransform->Update();
+    vtkSmartPointer<vtkTransform> translation =
+        vtkSmartPointer<vtkTransform>::New();
+    translation->Translate(0.2, 0.0, 0.0);
+    translation->RotateX(30);
+
+    vtkSmartPointer<vtkTransformPolyDataFilter> transformFilter1 =
+        vtkSmartPointer<vtkTransformPolyDataFilter>::New();
+    transformFilter1->SetInputData(reader->GetOutput());
+    transformFilter1->SetTransform(translation);
+    transformFilter1->Update();
 
     vtkSmartPointer<vtkPolyData> source =
         vtkSmartPointer<vtkPolyData>::New();
-    source->SetPoints(sourcePoints);
+    source->SetPoints(original->GetPoints());
 
     vtkSmartPointer<vtkPolyData> target =
         vtkSmartPointer<vtkPolyData>::New();
-    target->SetPoints(targetPoints);
+    target->SetPoints(transformFilter1->GetOutput()->GetPoints());
 
     vtkSmartPointer<vtkVertexGlyphFilter> sourceGlyphFilter =
         vtkSmartPointer<vtkVertexGlyphFilter>::New();
@@ -67,11 +68,21 @@ int main(int, char *[])
     targetGlyphFilter->SetInputData(target);
     targetGlyphFilter->Update();
 
-    vtkSmartPointer<vtkTransformPolyDataFilter> transformFilter =
+    vtkSmartPointer<vtkIterativeClosestPointTransform> icpTransform =
+        vtkSmartPointer<vtkIterativeClosestPointTransform>::New();
+    icpTransform->SetSource(sourceGlyphFilter->GetOutput());
+    icpTransform->SetTarget(targetGlyphFilter->GetOutput());
+    icpTransform->GetLandmarkTransform()->SetModeToRigidBody();
+    icpTransform->SetMaximumNumberOfIterations(20);
+    icpTransform->StartByMatchingCentroidsOn();
+    icpTransform->Modified();
+    icpTransform->Update();
+
+    vtkSmartPointer<vtkTransformPolyDataFilter> transformFilter2 =
         vtkSmartPointer<vtkTransformPolyDataFilter>::New();
-    transformFilter->SetInputData(sourceGlyphFilter->GetOutput());
-    transformFilter->SetTransform(landmarkTransform);
-    transformFilter->Update();
+    transformFilter2->SetInputData(sourceGlyphFilter->GetOutput());
+    transformFilter2->SetTransform(icpTransform);
+    transformFilter2->Update();
 
     vtkSmartPointer<vtkPolyDataMapper> sourceMapper =
         vtkSmartPointer<vtkPolyDataMapper>::New();
@@ -80,8 +91,8 @@ int main(int, char *[])
     vtkSmartPointer<vtkActor> sourceActor =
         vtkSmartPointer<vtkActor>::New();
     sourceActor->SetMapper(sourceMapper);
-    sourceActor->GetProperty()->SetColor(1,1,0);
-    sourceActor->GetProperty()->SetPointSize(5);
+    sourceActor->GetProperty()->SetColor(0,1,0);
+    sourceActor->GetProperty()->SetPointSize(3);
 
     vtkSmartPointer<vtkPolyDataMapper> targetMapper =
         vtkSmartPointer<vtkPolyDataMapper>::New();
@@ -91,20 +102,21 @@ int main(int, char *[])
         vtkSmartPointer<vtkActor>::New();
     targetActor->SetMapper(targetMapper);
     targetActor->GetProperty()->SetColor(1,0,0);
-    targetActor->GetProperty()->SetPointSize(5);
+    targetActor->GetProperty()->SetPointSize(3);
 
     vtkSmartPointer<vtkPolyDataMapper> solutionMapper =
         vtkSmartPointer<vtkPolyDataMapper>::New();
-    solutionMapper->SetInputConnection(transformFilter->GetOutputPort());
+    solutionMapper->SetInputConnection(transformFilter2->GetOutputPort());
 
     vtkSmartPointer<vtkActor> solutionActor =
         vtkSmartPointer<vtkActor>::New();
     solutionActor->SetMapper(solutionMapper);
     solutionActor->GetProperty()->SetColor(0,0,1);
-    solutionActor->GetProperty()->SetPointSize(5);
+    solutionActor->GetProperty()->SetPointSize(3);
 
     vtkSmartPointer<vtkRenderer> renderer =
         vtkSmartPointer<vtkRenderer>::New();
+    renderer->SetBackground(1.0, 1.0, 1.0);
 
     vtkSmartPointer<vtkRenderWindow> renderWindow =
         vtkSmartPointer<vtkRenderWindow>::New();
@@ -113,19 +125,14 @@ int main(int, char *[])
     renderer->AddActor(targetActor);
     renderer->AddActor(solutionActor);
 
-    vtkSmartPointer<vtkAxesActor> axes =
-        vtkSmartPointer<vtkAxesActor>::New();
-    axes->SetScale(30);
-    renderer->AddActor(axes);
-    renderer->SetBackground(.3, .6, .3);
-
     vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
         vtkSmartPointer<vtkRenderWindowInteractor>::New();
     renderWindowInteractor->SetRenderWindow(renderWindow);
 
     renderWindow->SetSize(640, 480);
     renderWindow->Render();
-    renderWindow->SetWindowName("PolyDataLandmarkReg");
+    renderWindow->SetWindowName("PolyDataICP");
+    renderWindow->Render();
     renderWindow->Render();
     renderWindowInteractor->Start();
 
